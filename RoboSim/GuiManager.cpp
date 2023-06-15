@@ -54,12 +54,12 @@ void GuiManager::scroll()
 
 void GuiManager::draw()
 {
-	for (const std::unique_ptr<sf::Shape>& moveableShape : moveableShapes)
-		window.draw(*moveableShape);
+	for (const std::unique_ptr<CustomShape>& moveableShape : moveableShapes)
+		window.draw(moveableShape->getDrawable());
 	for (const std::unique_ptr<Button>& guiObject : guiObjects)
-		window.draw(*guiObject);
+		window.draw(guiObject->shape);
 
-	window.draw(robot);
+	window.draw(robot.getDrawable());
 }
 
 void GuiManager::moveSelected()
@@ -76,6 +76,11 @@ void GuiManager::addTrajPoint()
 Node GuiManager::getMousePos()
 {
 	return Node(sf::Mouse::getPosition(window));
+}
+
+const ShapeList* GuiManager::getShapes()
+{
+	return &moveableShapes;
 }
 
 void GuiManager::update(int elapsedTime)

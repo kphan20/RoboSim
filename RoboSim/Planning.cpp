@@ -45,14 +45,29 @@ Trajectory* AStar::constructPath(const AStarNode& begin, AStarNode& end)
 
 
 
-Trajectory* AStar::findPath(Node start, Node end, sf::Vector2u windowSize, ShapeList obstacles)
+Trajectory* AStar::findPath(Node start, Node end, sf::Vector2u windowSize, const ShapeList* obstacles)
 {
 	Trajectory* result = new Trajectory();
 	const int xMax = windowSize.x, yMax = windowSize.y;
-	int** grid = new int* [xMax];
+	bool** grid = new bool* [xMax];
 	for (int i = 0; i < xMax; i++)
 	{
-		grid[i] = new int[yMax];
+		grid[i] = new bool[yMax];
+	}
+
+	for (auto& shape : *obstacles)
+	{
+		sf::IntRect bounds(shape->getGlobalBounds());
+		for (int i = 0; i < bounds.width; i++) {
+			for (int j = 0; j < bounds.height; j++) {
+				int xCoord = bounds.left + i;
+				int yCoord = bounds.top + j;
+				if (xCoord < 0 || xCoord >= xMax
+					|| yCoord < 0 || yCoord >= yMax || !grid[xCoord][yCoord])
+					continue;
+				grid[xCoord][yCoord] = !shape->contains(sf::Vector2f(xCoord, yCoord));
+			}
+		}
 	}
 	auto istart = sf::Vector2i(start);
 	auto iend = sf::Vector2i(end);
@@ -71,7 +86,7 @@ Trajectory* AStar::findPath(Node start, Node end, sf::Vector2u windowSize, Shape
 	{
 		auto currIter = openNodes.begin();
 		AStarNode* curr = *currIter;
-		//std::cout << curr->x << ", " << curr->y << '\n';
+		std::cout << curr->x << ", " << curr->y << '\n';
 		if (*curr == endNode)
 		{
 			std::cout << "Start construction";
@@ -90,7 +105,7 @@ Trajectory* AStar::findPath(Node start, Node end, sf::Vector2u windowSize, Shape
 				int newX = curr->x + dx;
 				if (newX < 0 || newX >= xMax) continue;
 				int newY = curr->y + dy;
-				if (newY < 0 || newY >= yMax) continue;
+				if (newY < 0 || newY >= yMax || !grid[newX][newY]) continue;
 				int gScore = curr->g + 1;
 
 				int diffX = endNode.x - newX;

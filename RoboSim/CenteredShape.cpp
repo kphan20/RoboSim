@@ -1,26 +1,36 @@
 #include "CenteredShape.h"
 
-CenteredCircle::CenteredCircle(float radius, size_t pointCount) : sf::CircleShape(radius, pointCount)
+CenteredCircle::CenteredCircle(float radius, size_t pointCount)
 {
+	shape = sf::CircleShape(radius, pointCount);
 	sf::FloatRect bounds{ this->getLocalBounds() };
-	this->setOrigin(bounds.width / 2, bounds.height / 2);
+	shape.setOrigin(bounds.width / 2, bounds.height / 2);
 }
 
 bool CenteredCircle::contains(sf::Vector2f point) const
 {
 	sf::Vector2f diff = this->getPosition() - point;
-	float rad = this->getRadius();
+	float rad = shape.getRadius();
 	return diff.x * diff.x + diff.y * diff.y <= rad * rad;
 }
 
-CenteredRect::CenteredRect(const sf::Vector2f& size) : sf::RectangleShape(size)
+const sf::Shape& CenteredCircle::getDrawable() {
+	return shape;
+}
+
+CenteredRect::CenteredRect(const sf::Vector2f& size)
 {
+	shape = sf::RectangleShape(size);
 	sf::FloatRect bounds{ this->getLocalBounds() };
-	this->setOrigin(bounds.width / 2, bounds.height / 2);
+	shape.setOrigin(bounds.width / 2, bounds.height / 2);
 }
 
 bool CenteredRect::contains(sf::Vector2f point) const {
 	return this->getGlobalBounds().contains(point);
+}
+
+const sf::Shape& CenteredRect::getDrawable() {
+	return shape;
 }
 
 // 

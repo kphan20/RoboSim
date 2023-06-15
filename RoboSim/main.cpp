@@ -50,7 +50,7 @@ void handletrajTesting(sf::RenderWindow& window, GuiManager& gui, sf::Event& eve
 				break;
 			case sf::Keyboard::P:
 				*gameMode = placement;
-				gui.robot.setTrajectory(AStar::findPath(gui.robot.getPosition(), gui.getMousePos(), window.getSize(), ShapeList()));
+				gui.robot.setTrajectory(AStar::findPath(gui.robot.getPosition(), gui.getMousePos(), window.getSize(), gui.getShapes()));
 				break;
 			case sf::Keyboard::W:
 				*gameMode = placement;

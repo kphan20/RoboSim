@@ -4,8 +4,9 @@
 #include <SFML/Graphics.hpp>
 #include "Button.h"
 #include "Robot.h"
+#include "CenteredShape.h"
 
-typedef std::vector<std::unique_ptr<sf::Shape>> ShapeList;
+typedef std::vector<std::unique_ptr<CustomShape>> ShapeList;
 typedef std::vector<std::unique_ptr<Button>> GuiList;
 typedef std::vector<std::shared_ptr<ClickAction>> ActionList;
 
@@ -24,6 +25,7 @@ public:
 	void moveSelected();
 	void addTrajPoint();
 	Node getMousePos();
+	const ShapeList* getShapes();
 
 	// game logic
 	void update(int);

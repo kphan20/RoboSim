@@ -39,7 +39,7 @@ public:
 class AStar
 {
 public:
-	static Trajectory* findPath(Node, Node, sf::Vector2u, ShapeList);
+	static Trajectory* findPath(Node, Node, sf::Vector2u, const ShapeList*);
 private:
 	static Trajectory* constructPath(const AStarNode&, AStarNode&);
 };
