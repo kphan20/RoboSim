@@ -21,8 +21,8 @@ void GuiManager::addButton()
 	auto newButton = std::make_unique<Button>(window, sf::Vector2f(100, 100));
 	newButton->setFillColor(sf::Color::Yellow);
 	// for now the only gui objects are buttons
-	if (numButtons++ == guiObjects.size()) {
-		size_t numButtonsCopy = numButtons;
+	if (++numButtons >= guiObjects.size()) {
+		size_t numButtonsCopy = numButtons - 1;
 		auto newAction = std::make_shared<ClickAction>([this, numButtonsCopy](size_t val) -> void {
 			std::cout << numButtonsCopy << '\n';
 		*currShapeIdxPtr = numButtonsCopy;
