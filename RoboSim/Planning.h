@@ -1,7 +1,8 @@
 #pragma once
 #include "Trajectory.h"
 #include <SFML/Graphics.hpp>
-
+#include <tuple>
+#include <unordered_map>
 
 class AStarNode
 {
@@ -12,16 +13,9 @@ public:
 	AStarNode* parent;
 	bool operator<(const AStarNode& other) const {
 		if (x == other.x && y == other.y) return false;
-		if ((g + h) == (other.g + other.h)) {
-			if (h == other.h) {
-				if (x == other.x) {
-					return y < other.y;
-				}
-				return x < other.x;
-			}
-			return h < other.h;
-		}
-		return (g + h) < (other.g + other.h);
+		const int f = g + h;
+		const int otherF = other.g + other.h;
+		return std::tie(f, h, x, y) < std::tie(otherF, other.h, other.x, other.y);
 	}
 	bool operator==(const AStarNode& other)
 	{
@@ -34,12 +28,46 @@ public:
 	const Node& getPathNode();
 	const int x, y;
 	int g = 0, h = 0;
+	int f() {
+		return g + h;
+	}
+	const std::pair<int, int> coords() const
+	{
+		return std::pair<int, int>(x, y);
+	}
+};
+
+struct hash_pair {
+	template <class T1, class T2>
+	size_t operator()(const std::pair<T1, T2>& p) const
+	{
+		return std::hash<T1>{}(p.first * 2000 + p.second);
+	}
+};
+
+class OpenList
+{
+public:
+	OpenList();
+	void insert(AStarNode*);
+	AStarNode* pop();
+	bool empty();
+	void clear();
+private:
+	bool less(size_t, size_t);
+	void swap(size_t, size_t);
+	void update(size_t, const AStarNode*);
+	void siftUp(size_t);
+	void siftDown(size_t);
+	std::vector<AStarNode*> heap;
+	std::unordered_map<std::pair<int, int>, size_t, hash_pair> indexMapping;
+	std::unordered_map<std::pair<int, int>, int, hash_pair> gValues;
 };
 
 class AStar
 {
 public:
-	static Trajectory* findPath(Node, Node, sf::Vector2u, const ShapeList*);
+	static Trajectory* findPath(Node, Node, sf::Vector2u, const ShapeList*, float robotRad = 0);
 private:
 	static Trajectory* constructPath(const AStarNode&, AStarNode&);
 };

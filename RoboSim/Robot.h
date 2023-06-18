@@ -13,6 +13,7 @@ public:
 	void followTrajectory(Trajectory&, float);
 	void setTrajectory(Trajectory*);
 	void addToCurrTrajectory(Node);
+	float getRadius();
 private:
 	Trajectory* currTrajectory;
 };

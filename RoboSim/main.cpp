@@ -1,6 +1,9 @@
 #include "GuiManager.h"
 #include <iostream>
 #include "Planning.h"
+#include <chrono>
+
+#define DEBUG 0
 
 enum GameMode { placement, trajTesting };
 
@@ -39,6 +42,8 @@ void handlePlacement(sf::RenderWindow& window, GuiManager& gui, sf::Event& event
 
 void handletrajTesting(sf::RenderWindow& window, GuiManager& gui, sf::Event& event, GameMode* gameMode)
 {
+	auto start = std::chrono::high_resolution_clock::now();
+	auto finish = std::chrono::high_resolution_clock::now();
 	while (window.pollEvent(event))
 	{
 		if (event.type == sf::Event::Closed)
@@ -50,7 +55,11 @@ void handletrajTesting(sf::RenderWindow& window, GuiManager& gui, sf::Event& eve
 				break;
 			case sf::Keyboard::P:
 				*gameMode = placement;
-				gui.robot.setTrajectory(AStar::findPath(gui.robot.getPosition(), gui.getMousePos(), window.getSize(), gui.getShapes()));
+				using milli = std::chrono::milliseconds;
+				start = std::chrono::high_resolution_clock::now();
+				gui.robot.setTrajectory(AStar::findPath(gui.robot.getPosition(), gui.getMousePos(), window.getSize(), gui.getShapes(), gui.robot.getRadius()));
+				finish = std::chrono::high_resolution_clock::now();
+				std::cout << std::chrono::duration_cast<milli>(finish - start).count() << " milliseconds\n";
 				break;
 			case sf::Keyboard::W:
 				*gameMode = placement;

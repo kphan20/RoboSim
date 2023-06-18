@@ -59,3 +59,8 @@ void Robot::addToCurrTrajectory(Node node)
 {
 	currTrajectory->addToPath(node);
 }
+
+float Robot::getRadius()
+{
+	return this->shape.getRadius();
+}

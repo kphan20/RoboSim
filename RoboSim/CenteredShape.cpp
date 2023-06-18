@@ -18,6 +18,13 @@ const sf::Shape& CenteredCircle::getDrawable() {
 	return shape;
 }
 
+bool CenteredCircle::contains(sf::Vector2f point, float robotRad) const
+{
+	sf::Vector2f diff = this->getPosition() - point;
+	float rad = shape.getRadius() + robotRad;
+	return diff.x * diff.x + diff.y * diff.y <= rad * rad;
+}
+
 CenteredRect::CenteredRect(const sf::Vector2f& size)
 {
 	shape = sf::RectangleShape(size);
@@ -31,6 +38,10 @@ bool CenteredRect::contains(sf::Vector2f point) const {
 
 const sf::Shape& CenteredRect::getDrawable() {
 	return shape;
+}
+
+bool CenteredRect::contains(sf::Vector2f point, float robotRad) const {
+	return this->getGlobalBounds().contains(point);
 }
 
 // 

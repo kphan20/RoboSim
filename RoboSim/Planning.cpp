@@ -36,17 +36,118 @@ Trajectory* AStar::constructPath(const AStarNode& begin, AStarNode& end)
 
 	while (*curr != begin)
 	{
+#if DEBUG
 		std::cout << curr->x << ", " << curr->y << '\n';
+#endif
 		trajectory->addToFront(curr->getPathNode());
 		curr = curr->parent;
 	}
 	return trajectory;
 }
 
-
-
-Trajectory* AStar::findPath(Node start, Node end, sf::Vector2u windowSize, const ShapeList* obstacles)
+OpenList::OpenList()
 {
+	heap = std::vector<AStarNode*>();
+	AStarNode* filler = nullptr;
+	heap.emplace_back(filler);
+	indexMapping = std::unordered_map<std::pair<int, int>, size_t, hash_pair>();
+	gValues = std::unordered_map<std::pair<int, int>, int, hash_pair>();
+}
+
+bool OpenList::less(size_t ind1, size_t ind2)
+{
+	return heap[ind1]->f() < heap[ind2]->f();
+}
+
+void OpenList::swap(size_t ind1, size_t ind2)
+{
+	auto node1 = heap[ind1];
+	auto node2 = heap[ind2];
+	indexMapping[node1->coords()] = ind2;
+	indexMapping[node2->coords()] = ind1;
+	AStarNode* temp = node1;
+	heap[ind1] = node2;
+	heap[ind2] = temp;
+}
+
+void OpenList::siftUp(size_t ind)
+{
+	while (ind > 1 && less(ind, ind / 2)) {
+		swap(ind, ind / 2);
+		ind /= 2;
+	}
+}
+
+void OpenList::siftDown(size_t ind)
+{
+	while (2 * ind < heap.size()) {
+		size_t child_ind = 2 * ind;
+		if (child_ind < heap.size() - 1 && less(child_ind + 1, child_ind))
+			child_ind++;
+		if (less(ind, child_ind)) break;
+		swap(ind, child_ind);
+		ind = child_ind;
+	}
+}
+
+void OpenList::update(size_t ind, const AStarNode* update) {
+	auto node = heap[ind];
+	gValues[node->coords()] = update->g;
+	node->g = update->g;
+	node->h = update->h;
+	siftUp(ind);
+}
+
+void OpenList::insert(AStarNode* node) {
+	auto result = gValues.find(node->coords());
+
+	if (result != gValues.end()) {
+		// no replacement needed
+		if (result->second <= node->g) {
+			delete node;
+			return;
+		}
+		auto index = indexMapping.find(node->coords());
+		if (index != indexMapping.end())
+		{
+			update(index->second, node);
+			delete node;
+			return;
+		}
+	}
+	// swim up logic
+	heap.emplace_back(node);
+	size_t ind = heap.size() - 1;
+	indexMapping[node->coords()] = ind;
+	gValues[node->coords()] = node->g;
+	siftUp(ind);
+}
+
+bool OpenList::empty()
+{
+	return heap.size() < 2;
+}
+
+AStarNode* OpenList::pop()
+{
+	// pop() should never be called when empty
+	auto node = heap[1];
+	indexMapping.erase(node->coords());
+	heap[1] = heap[heap.size() - 1];
+	heap.pop_back();
+	if (heap.size() > 2)
+		siftDown(1);
+	return node;
+}
+
+void OpenList::clear()
+{
+	for (auto node : heap) delete node;
+}
+
+Trajectory* AStar::findPath(Node start, Node end, sf::Vector2u windowSize, const ShapeList* obstacles, float robotRad)
+{
+	size_t nodesExpanded = 0;
 	Trajectory* result = new Trajectory();
 	const int xMax = windowSize.x, yMax = windowSize.y;
 	bool** grid = new bool* [xMax];
@@ -57,7 +158,7 @@ Trajectory* AStar::findPath(Node start, Node end, sf::Vector2u windowSize, const
 
 	for (auto& shape : *obstacles)
 	{
-		sf::IntRect bounds(shape->getGlobalBounds());
+		sf::IntRect bounds(shape->getNewGlobalBounds(robotRad));
 		for (int i = 0; i < bounds.width; i++) {
 			for (int j = 0; j < bounds.height; j++) {
 				int xCoord = bounds.left + i;
@@ -65,7 +166,7 @@ Trajectory* AStar::findPath(Node start, Node end, sf::Vector2u windowSize, const
 				if (xCoord < 0 || xCoord >= xMax
 					|| yCoord < 0 || yCoord >= yMax || !grid[xCoord][yCoord])
 					continue;
-				grid[xCoord][yCoord] = !shape->contains(sf::Vector2f(xCoord, yCoord));
+				grid[xCoord][yCoord] = !shape->contains(sf::Vector2f(xCoord, yCoord), robotRad);
 			}
 		}
 	}
@@ -74,30 +175,28 @@ Trajectory* AStar::findPath(Node start, Node end, sf::Vector2u windowSize, const
 	auto cmp = [](const AStarNode* a, const AStarNode* b) {
 		return *a < *b;
 	};
-	std::set<AStarNode*, decltype(cmp)> openNodes;
-	std::set<AStarNode*, decltype(cmp)> closedNodes;
+	OpenList openNodes;
 
 	AStarNode* startNode = new AStarNode(istart);
 	const AStarNode endNode(iend);
 
-	openNodes.emplace(startNode);
+	//openNodes.emplace(startNode);
+	if (grid[endNode.x][endNode.y])
+		openNodes.insert(startNode);
 
 	while (!openNodes.empty())
 	{
-		auto currIter = openNodes.begin();
-		AStarNode* curr = *currIter;
+		AStarNode* curr = openNodes.pop();
+		nodesExpanded++;
+#if DEBUG
 		std::cout << curr->x << ", " << curr->y << '\n';
+#endif
 		if (*curr == endNode)
 		{
-			std::cout << "Start construction";
 			delete result;
 			result = constructPath(*startNode, *curr);
-			std::cout << "End construction";
 			break;
-		}
-
-		openNodes.erase(currIter);
-		closedNodes.emplace(curr);
+	}
 
 		for (int dx = -1; dx < 2; dx++) {
 			for (int dy = -1; dy < 2; dy++) {
@@ -112,44 +211,17 @@ Trajectory* AStar::findPath(Node start, Node end, sf::Vector2u windowSize, const
 				int diffY = endNode.y - newY;
 				AStarNode* neighbor = new AStarNode(newX, newY, curr, gScore, diffX * diffX + diffY * diffY);
 
-				const auto neighborCheck = openNodes.find(neighbor);
-				const auto closedCheck = closedNodes.find(neighbor);
-
-				if (neighborCheck != openNodes.end() && closedCheck != closedNodes.end())
-					std::cout << "Something wrong\n";
-
-				if (neighborCheck != openNodes.end()) {
-					if ((*neighborCheck)->g <= neighbor->g)
-					{
-						delete neighbor;
-						continue;
-					}
-					AStarNode* obsolete = *neighborCheck;
-					openNodes.erase(neighborCheck);
-					delete obsolete;
-				}
-				else if (closedCheck != closedNodes.end())
-				{
-					if ((*closedCheck)->g <= neighbor->g)
-					{
-						delete neighbor;
-						continue;
-					}
-					AStarNode* obsolete = *closedCheck;
-					closedNodes.erase(closedCheck);
-					delete obsolete;
-				}
-				openNodes.emplace(neighbor);
+				openNodes.insert(neighbor);
 			}
 		}
-	}
+}
 	// frees memory allocated by grid
 	for (int i = 0; i < xMax; i++)
 		delete[] grid[i];
 	delete[] grid;
 
-	for (AStarNode* node : openNodes) delete node;
-	for (AStarNode* node : closedNodes) delete node;
-	std::cout << "Finished";
+	openNodes.clear();
+
+	std::cout << "Finished after " << nodesExpanded << " nodes in ";
 	return result;
 }
