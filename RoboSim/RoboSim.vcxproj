@@ -141,15 +141,16 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AStar.cpp" />
     <ClCompile Include="Button.cpp" />
     <ClCompile Include="CenteredShape.cpp" />
     <ClCompile Include="GuiManager.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Planning.cpp" />
     <ClCompile Include="Robot.cpp" />
     <ClCompile Include="Trajectory.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AStar.h" />
     <ClInclude Include="Button.h" />
     <ClInclude Include="CenteredShape.h" />
     <ClInclude Include="GuiManager.h" />

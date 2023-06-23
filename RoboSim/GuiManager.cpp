@@ -5,7 +5,6 @@ GuiManager::GuiManager(sf::RenderWindow& win, int sizePerNode) : window(win), no
 {
 	currShapeIdx = 0;
 	currShapeIdxPtr = &currShapeIdx;
-	robot = Robot(75);
 }
 
 void GuiManager::addCircle()
@@ -58,19 +57,12 @@ void GuiManager::draw()
 		window.draw(moveableShape->getDrawable());
 	for (const std::unique_ptr<Button>& guiObject : guiObjects)
 		window.draw(guiObject->shape);
-
-	window.draw(robot.getDrawable());
 }
 
 void GuiManager::moveSelected()
 {
 	if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && moveableShapes.size() > 0)
 		moveableShapes[currShapeIdx]->setPosition(sf::Vector2f(sf::Mouse::getPosition(window)));
-}
-
-void GuiManager::addTrajPoint()
-{
-	robot.addToCurrTrajectory(sf::Vector2f(sf::Mouse::getPosition(window)));
 }
 
 Node GuiManager::getMousePos()
@@ -103,10 +95,4 @@ void GuiManager::freeNodes()
 	for (auto p : nodes)
 		delete p;
 	nodes.clear();
-}
-
-
-void GuiManager::update(int elapsedTime)
-{
-	robot.followTrajectory(elapsedTime);
 }

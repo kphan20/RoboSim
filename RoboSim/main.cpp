@@ -1,6 +1,6 @@
-#include "GuiManager.h"
+#include "Robot.h"
+#include "AStar.h"
 #include <iostream>
-#include "Planning.h"
 #include <chrono>
 
 #define DEBUG 0
@@ -40,7 +40,7 @@ void handlePlacement(sf::RenderWindow& window, GuiManager& gui, sf::Event& event
 	gui.moveSelected();
 }
 
-void handletrajTesting(sf::RenderWindow& window, GuiManager& gui, sf::Event& event, GameMode* gameMode)
+void handletrajTesting(sf::RenderWindow& window, GuiManager& gui, sf::Event& event, GameMode* gameMode, Robot& robot)
 {
 	auto start = std::chrono::high_resolution_clock::now();
 	auto finish = std::chrono::high_resolution_clock::now();
@@ -57,7 +57,7 @@ void handletrajTesting(sf::RenderWindow& window, GuiManager& gui, sf::Event& eve
 				*gameMode = placement;
 				using milli = std::chrono::milliseconds;
 				start = std::chrono::high_resolution_clock::now();
-				gui.robot.setTrajectory(AStar::findPath(gui, window.getSize()));
+				robot.plan(gui, window.getSize(), true);
 				finish = std::chrono::high_resolution_clock::now();
 				std::cout << std::chrono::duration_cast<milli>(finish - start).count() << " milliseconds\n";
 				break;
@@ -68,7 +68,7 @@ void handletrajTesting(sf::RenderWindow& window, GuiManager& gui, sf::Event& eve
 				break;
 			}
 		if (event.type == sf::Event::MouseButtonReleased)
-			gui.addTrajPoint();
+			robot.addToCurrTrajectory(gui.getMousePos());
 	}
 }
 
@@ -77,7 +77,10 @@ int main()
 	int windowWidth{ 500 }, windowLength{ 500 };
 	sf::RenderWindow window(sf::VideoMode(windowWidth, windowLength), "SFML works!", sf::Style::Fullscreen);
 
-	GuiManager gui(window);
+	AStar plan;
+	Robot robot(plan, 75);
+
+	GuiManager gui(window, 4);
 
 	std::cout << window.getSize().x << ',' << window.getSize().y << '\n';
 
@@ -100,7 +103,7 @@ int main()
 
 		if (nextUpdate < currTime) {
 			if (gameMode == placement)
-				gui.update(currTime - prevUpdate);
+				robot.update(currTime - prevUpdate);
 			prevUpdate = currTime;
 			nextUpdate += deadlineMs;
 		}
@@ -110,11 +113,12 @@ int main()
 		if (gameMode == placement)
 			handlePlacement(window, gui, event, &gameMode);
 		else if (gameMode == trajTesting)
-			handletrajTesting(window, gui, event, &gameMode);
+			handletrajTesting(window, gui, event, &gameMode, robot);
 
 		window.clear();
 
 		gui.draw();
+		window.draw(robot.getDrawable());
 
 		window.display();
 	}

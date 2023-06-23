@@ -1,12 +1,13 @@
 #pragma once
 #include "CenteredShape.h"
-#include "Trajectory.h"
+#include "Planning.h"
 
 class Robot : public CenteredCircle
 {
 public:
-	Robot();
-	Robot(float radius, size_t pointCount = 30);
+	Robot(Planner&);
+	Robot(Planner&, float radius, size_t pointCount = 30);
+	void plan(GuiManager& gui, sf::Vector2u windowSize, bool visualize = false);
 	void followTrajectory();
 	void followTrajectory(float);
 	void followTrajectory(Trajectory&);
@@ -14,6 +15,8 @@ public:
 	void setTrajectory(Trajectory*);
 	void addToCurrTrajectory(Node);
 	float getRadius();
+	void update(int);
 private:
 	Trajectory* currTrajectory;
+	Planner& planner;
 };

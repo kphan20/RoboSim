@@ -1,5 +1,4 @@
-#include "GuiManager.h"
-#include "Planning.h"
+#include "AStar.h"
 #include <iostream>
 #include <set>
 #include <chrono>
@@ -28,22 +27,6 @@ AStarNode::AStarNode(sf::Vector2i& pos, AStarNode* parent, int g, int h) : x(pos
 const Node& AStarNode::getPathNode()
 {
 	return sf::Vector2f(x, y);
-}
-
-Trajectory* AStar::constructPath(const AStarNode& begin, AStarNode& end)
-{
-	Trajectory* trajectory = new Trajectory();
-	AStarNode* curr = &end;
-
-	while (*curr != begin)
-	{
-#if DEBUG
-		std::cout << curr->x << ", " << curr->y << '\n';
-#endif
-		trajectory->addToFront(curr->getPathNode());
-		curr = curr->parent;
-	}
-	return trajectory;
 }
 
 OpenList::OpenList(int nodeSize, int xR, int yR, sf::Vector2u windowSize) : nodeSize(nodeSize), xRem(xR), yRem(yR), windowSize(windowSize)
@@ -155,7 +138,23 @@ void OpenList::clear()
 	for (auto node : heap) delete node;
 }
 
-Trajectory* AStar::findPath(GuiManager& gui, sf::Vector2u windowSize, bool visualize)
+Trajectory* AStar::constructPath(const AStarNode& begin, AStarNode& end) const
+{
+	Trajectory* trajectory = new Trajectory();
+	AStarNode* curr = &end;
+
+	while (*curr != begin)
+	{
+#if DEBUG
+		std::cout << curr->x << ", " << curr->y << '\n';
+#endif
+		trajectory->addToFront(curr->getPathNode());
+		curr = curr->parent;
+	}
+	return trajectory;
+}
+
+Trajectory* AStar::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui, sf::Vector2u windowSize, bool visualize) const
 {
 	using milli = std::chrono::milliseconds;
 	auto start = std::chrono::high_resolution_clock::now();
@@ -171,7 +170,6 @@ Trajectory* AStar::findPath(GuiManager& gui, sf::Vector2u windowSize, bool visua
 	}
 
 	auto obstacles = gui.getShapes();
-	float robotRad = gui.robot.getRadius();
 	for (auto& shape : *obstacles)
 	{
 		sf::IntRect bounds(shape->getNewGlobalBounds(robotRad));
@@ -190,7 +188,7 @@ Trajectory* AStar::findPath(GuiManager& gui, sf::Vector2u windowSize, bool visua
 			}
 		}
 	}
-	auto istart = sf::Vector2i(gui.robot.getPosition());
+	auto istart = sf::Vector2i(robotPos);
 	Node end = gui.getMousePos();
 	auto iend = sf::Vector2i(end);
 	auto cmp = [](const AStarNode* a, const AStarNode* b) {

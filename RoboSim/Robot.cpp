@@ -1,16 +1,21 @@
 #include "Robot.h"
 #include <cmath>
 
-Robot::Robot() : CenteredCircle()
+Robot::Robot(Planner& plan) : CenteredCircle(), planner(plan)
 {
 	this->setFillColor(sf::Color::Red);
 	currTrajectory = new (std::nothrow) Trajectory;
 }
 
-Robot::Robot(float radius, size_t pointCount) : CenteredCircle(radius, pointCount)
+Robot::Robot(Planner& plan, float radius, size_t pointCount) : CenteredCircle(radius, pointCount), planner(plan)
 {
 	this->setFillColor(sf::Color::Red);
 	currTrajectory = new (std::nothrow) Trajectory;
+}
+
+void Robot::plan(GuiManager& gui, sf::Vector2u windowSize, bool visualize)
+{
+	setTrajectory(planner.findPath(getRadius(), getPosition(), gui, windowSize, visualize));
 }
 
 // probably useless
@@ -63,4 +68,9 @@ void Robot::addToCurrTrajectory(Node node)
 float Robot::getRadius()
 {
 	return this->shape.getRadius();
+}
+
+void Robot::update(int elapsedTime)
+{
+	followTrajectory(elapsedTime);
 }
