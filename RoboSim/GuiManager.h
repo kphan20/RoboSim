@@ -14,9 +14,10 @@ typedef std::vector<std::shared_ptr<ClickAction>> ActionList;
 class GuiManager
 {
 public:
-	GuiManager(sf::RenderWindow&);
+	GuiManager(sf::RenderWindow&, int sizePerNode=1);
 	GuiManager(const GuiManager&) = delete;
 	Robot robot;
+	const int nodeSize;
 	void addCircle();
 	void addButton();
 	void draw();

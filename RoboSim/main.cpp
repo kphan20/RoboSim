@@ -57,7 +57,7 @@ void handletrajTesting(sf::RenderWindow& window, GuiManager& gui, sf::Event& eve
 				*gameMode = placement;
 				using milli = std::chrono::milliseconds;
 				start = std::chrono::high_resolution_clock::now();
-				gui.robot.setTrajectory(AStar::findPath(gui.robot.getPosition(), gui.getMousePos(), window.getSize(), gui.getShapes(), gui.robot.getRadius()));
+				gui.robot.setTrajectory(AStar::findPath(gui, window.getSize()));
 				finish = std::chrono::high_resolution_clock::now();
 				std::cout << std::chrono::duration_cast<milli>(finish - start).count() << " milliseconds\n";
 				break;

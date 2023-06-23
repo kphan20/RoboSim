@@ -1,7 +1,7 @@
 #include "GuiManager.h"
 #include <iostream>
 
-GuiManager::GuiManager(sf::RenderWindow& win) : window(win)
+GuiManager::GuiManager(sf::RenderWindow& win, int sizePerNode) : window(win), nodeSize(sizePerNode)
 {
 	currShapeIdx = 0;
 	currShapeIdxPtr = &currShapeIdx;

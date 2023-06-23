@@ -48,12 +48,15 @@ struct hash_pair {
 class OpenList
 {
 public:
-	OpenList();
+	OpenList(int nodeSize, int xR, int yR, sf::Vector2u);
 	void insert(AStarNode*);
 	AStarNode* pop();
 	bool empty();
 	void clear();
+	std::pair<int, int> convertCoords(const std::pair<int, int>&);
 private:
+	const int nodeSize, xRem, yRem;
+	const sf::Vector2u windowSize;
 	bool less(size_t, size_t);
 	void swap(size_t, size_t);
 	void update(size_t, const AStarNode*);
@@ -67,7 +70,7 @@ private:
 class AStar
 {
 public:
-	static Trajectory* findPath(Node, Node, sf::Vector2u, const ShapeList*, float robotRad = 0);
+	static Trajectory* findPath(GuiManager& gui, sf::Vector2u windowSize);
 private:
 	static Trajectory* constructPath(const AStarNode&, AStarNode&);
 };

@@ -2,6 +2,7 @@
 #include "Planning.h"
 #include <iostream>
 #include <set>
+#include <chrono>
 
 AStarNode::AStarNode(sf::Vector2i& pos, int g, int h) : x(pos.x), y(pos.y)
 {
@@ -45,13 +46,21 @@ Trajectory* AStar::constructPath(const AStarNode& begin, AStarNode& end)
 	return trajectory;
 }
 
-OpenList::OpenList()
+OpenList::OpenList(int nodeSize, int xR, int yR, sf::Vector2u windowSize) : nodeSize(nodeSize), xRem(xR), yRem(yR), windowSize(windowSize)
 {
 	heap = std::vector<AStarNode*>();
+	heap.reserve(1024);
 	AStarNode* filler = nullptr;
 	heap.emplace_back(filler);
 	indexMapping = std::unordered_map<std::pair<int, int>, size_t, hash_pair>();
 	gValues = std::unordered_map<std::pair<int, int>, int, hash_pair>();
+}
+
+std::pair<int, int> OpenList::convertCoords(const std::pair<int, int>& coords)
+{
+	const int x = coords.first / nodeSize + (coords.first >= windowSize.x - xRem ? 1 : 0);
+	const int y = coords.second / nodeSize + (coords.second >= windowSize.y - yRem ? 1 : 0);
+	return std::pair<int, int>(x, y);
 }
 
 bool OpenList::less(size_t ind1, size_t ind2)
@@ -63,8 +72,8 @@ void OpenList::swap(size_t ind1, size_t ind2)
 {
 	auto node1 = heap[ind1];
 	auto node2 = heap[ind2];
-	indexMapping[node1->coords()] = ind2;
-	indexMapping[node2->coords()] = ind1;
+	indexMapping[convertCoords(node1->coords())] = ind2;
+	indexMapping[convertCoords(node2->coords())] = ind1;
 	AStarNode* temp = node1;
 	heap[ind1] = node2;
 	heap[ind2] = temp;
@@ -92,14 +101,15 @@ void OpenList::siftDown(size_t ind)
 
 void OpenList::update(size_t ind, const AStarNode* update) {
 	auto node = heap[ind];
-	gValues[node->coords()] = update->g;
+	gValues[convertCoords(node->coords())] = update->g;
 	node->g = update->g;
 	node->h = update->h;
 	siftUp(ind);
 }
 
 void OpenList::insert(AStarNode* node) {
-	auto result = gValues.find(node->coords());
+	auto newCoords = convertCoords(node->coords());
+	auto result = gValues.find(newCoords);
 
 	if (result != gValues.end()) {
 		// no replacement needed
@@ -107,7 +117,7 @@ void OpenList::insert(AStarNode* node) {
 			delete node;
 			return;
 		}
-		auto index = indexMapping.find(node->coords());
+		auto index = indexMapping.find(newCoords);
 		if (index != indexMapping.end())
 		{
 			update(index->second, node);
@@ -118,8 +128,8 @@ void OpenList::insert(AStarNode* node) {
 	// swim up logic
 	heap.emplace_back(node);
 	size_t ind = heap.size() - 1;
-	indexMapping[node->coords()] = ind;
-	gValues[node->coords()] = node->g;
+	indexMapping[newCoords] = ind;
+	gValues[newCoords] = node->g;
 	siftUp(ind);
 }
 
@@ -132,7 +142,7 @@ AStarNode* OpenList::pop()
 {
 	// pop() should never be called when empty
 	auto node = heap[1];
-	indexMapping.erase(node->coords());
+	indexMapping.erase(convertCoords(node->coords()));
 	heap[1] = heap[heap.size() - 1];
 	heap.pop_back();
 	if (heap.size() > 2)
@@ -145,17 +155,23 @@ void OpenList::clear()
 	for (auto node : heap) delete node;
 }
 
-Trajectory* AStar::findPath(Node start, Node end, sf::Vector2u windowSize, const ShapeList* obstacles, float robotRad)
+Trajectory* AStar::findPath(GuiManager& gui, sf::Vector2u windowSize)
 {
+	using milli = std::chrono::milliseconds;
+	auto start = std::chrono::high_resolution_clock::now();
 	size_t nodesExpanded = 0;
 	Trajectory* result = new Trajectory();
-	const int xMax = windowSize.x, yMax = windowSize.y;
+	bool xRemainder = windowSize.x % gui.nodeSize, yRemainder = windowSize.y % gui.nodeSize;
+	const int xMax = windowSize.x / gui.nodeSize + (xRemainder > 0);
+	const int yMax = windowSize.y / gui.nodeSize + (yRemainder > 0);
 	bool** grid = new bool* [xMax];
 	for (int i = 0; i < xMax; i++)
 	{
 		grid[i] = new bool[yMax];
 	}
 
+	auto obstacles = gui.getShapes();
+	float robotRad = gui.robot.getRadius();
 	for (auto& shape : *obstacles)
 	{
 		sf::IntRect bounds(shape->getNewGlobalBounds(robotRad));
@@ -163,27 +179,37 @@ Trajectory* AStar::findPath(Node start, Node end, sf::Vector2u windowSize, const
 			for (int j = 0; j < bounds.height; j++) {
 				int xCoord = bounds.left + i;
 				int yCoord = bounds.top + j;
-				if (xCoord < 0 || xCoord >= xMax
-					|| yCoord < 0 || yCoord >= yMax || !grid[xCoord][yCoord])
+				int adjX = xCoord / gui.nodeSize;
+				if (xCoord >= windowSize.x - xRemainder) adjX++;
+				int adjY = yCoord / gui.nodeSize;
+				if (yCoord >= windowSize.y - yRemainder) adjY++;
+				if (xCoord < 0 || xCoord >= windowSize.x
+					|| yCoord < 0 || yCoord >= windowSize.y || !grid[adjX][adjY])
 					continue;
-				grid[xCoord][yCoord] = !shape->contains(sf::Vector2f(xCoord, yCoord), robotRad);
+				grid[adjX][adjY] = !shape->contains(sf::Vector2f(xCoord, yCoord), robotRad);
 			}
 		}
 	}
-	auto istart = sf::Vector2i(start);
+	auto istart = sf::Vector2i(gui.robot.getPosition());
+	Node end = gui.getMousePos();
 	auto iend = sf::Vector2i(end);
+	//auto map = gui.getImage();
+	//map.setPixel(end.x, end.y, sf::Color::Green);
 	auto cmp = [](const AStarNode* a, const AStarNode* b) {
 		return *a < *b;
 	};
-	OpenList openNodes;
+	OpenList openNodes(gui.nodeSize, xRemainder, yRemainder, windowSize);
 
 	AStarNode* startNode = new AStarNode(istart);
 	const AStarNode endNode(iend);
 
-	//openNodes.emplace(startNode);
-	if (grid[endNode.x][endNode.y])
+	auto endCoords = openNodes.convertCoords(endNode.coords());
+	if (grid[endCoords.first][endCoords.second])
 		openNodes.insert(startNode);
+	auto finish = std::chrono::high_resolution_clock::now();
+	std::cout << "Setup took " << std::chrono::duration_cast<milli>(finish - start).count() << " milliseconds\n";
 
+	start = std::chrono::high_resolution_clock::now();
 	while (!openNodes.empty())
 	{
 		AStarNode* curr = openNodes.pop();
@@ -191,37 +217,52 @@ Trajectory* AStar::findPath(Node start, Node end, sf::Vector2u windowSize, const
 #if DEBUG
 		std::cout << curr->x << ", " << curr->y << '\n';
 #endif
-		if (*curr == endNode)
+		if (*curr == endNode || openNodes.convertCoords(curr->coords()) == endCoords)
 		{
 			delete result;
 			result = constructPath(*startNode, *curr);
 			break;
-	}
+		}
+
+		// map.setPixel(curr->x, curr->y, sf::Color::Red);
+
+		//gui.updateTexture();
+		// auto color = map.getPixel(curr->x, curr->y);
+		//gui.draw();
 
 		for (int dx = -1; dx < 2; dx++) {
 			for (int dy = -1; dy < 2; dy++) {
 				if (dx == 0 && dy == 0) continue;
-				int newX = curr->x + dx;
+				auto newCoords = openNodes.convertCoords(curr->coords());
+				int newX = newCoords.first + dx;
 				if (newX < 0 || newX >= xMax) continue;
-				int newY = curr->y + dy;
+				int newY = newCoords.second + dy;
 				if (newY < 0 || newY >= yMax || !grid[newX][newY]) continue;
 				int gScore = curr->g + 1;
 
-				int diffX = endNode.x - newX;
-				int diffY = endNode.y - newY;
+				int diffX = endCoords.first - newX;
+				int diffY = endCoords.second - newY;
+				if (newX == xMax - 1) newX--;
+				if (newY == yMax - 1) newY--;
+				newX *= gui.nodeSize;
+				newY *= gui.nodeSize;
 				AStarNode* neighbor = new AStarNode(newX, newY, curr, gScore, diffX * diffX + diffY * diffY);
 
 				openNodes.insert(neighbor);
 			}
 		}
-}
+	}
+	finish = std::chrono::high_resolution_clock::now();
+	std::cout << "Search took " << std::chrono::duration_cast<milli>(finish - start).count() << " milliseconds\n";
+	start = std::chrono::high_resolution_clock::now();
 	// frees memory allocated by grid
 	for (int i = 0; i < xMax; i++)
 		delete[] grid[i];
 	delete[] grid;
 
 	openNodes.clear();
-
+	finish = std::chrono::high_resolution_clock::now();
+	std::cout << "Cleanup took " << std::chrono::duration_cast<milli>(finish - start).count() << " milliseconds\n";
 	std::cout << "Finished after " << nodesExpanded << " nodes in ";
 	return result;
 }
