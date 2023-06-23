@@ -70,7 +70,7 @@ private:
 class AStar
 {
 public:
-	static Trajectory* findPath(GuiManager& gui, sf::Vector2u windowSize);
+	static Trajectory* findPath(GuiManager& gui, sf::Vector2u windowSize, bool visualize=false);
 private:
 	static Trajectory* constructPath(const AStarNode&, AStarNode&);
 };

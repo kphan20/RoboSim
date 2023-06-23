@@ -9,12 +9,13 @@
 typedef std::vector<std::unique_ptr<CustomShape>> ShapeList;
 typedef std::vector<std::unique_ptr<Button>> GuiList;
 typedef std::vector<std::shared_ptr<ClickAction>> ActionList;
+typedef std::vector<sf::CircleShape*> VisualizerList;
 
 
 class GuiManager
 {
 public:
-	GuiManager(sf::RenderWindow&, int sizePerNode=1);
+	GuiManager(sf::RenderWindow&, int sizePerNode = 1);
 	GuiManager(const GuiManager&) = delete;
 	Robot robot;
 	const int nodeSize;
@@ -27,6 +28,10 @@ public:
 	void addTrajPoint();
 	Node getMousePos();
 	const ShapeList* getShapes();
+	// pathfinding api
+	void addNode(std::pair<int, int> coords, sf::Color);
+	void drawNodes();
+	void freeNodes();
 
 	// game logic
 	void update(int);
@@ -38,4 +43,5 @@ private:
 	ShapeList moveableShapes{};
 	GuiList guiObjects{};
 	ActionList actions{};
+	VisualizerList nodes;
 };

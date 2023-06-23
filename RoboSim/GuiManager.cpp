@@ -83,6 +83,29 @@ const ShapeList* GuiManager::getShapes()
 	return &moveableShapes;
 }
 
+void GuiManager::addNode(std::pair<int, int> coords, sf::Color color)
+{
+	auto ptr1 = new sf::CircleShape(nodeSize);
+	ptr1->setFillColor(color);
+	ptr1->setPosition(coords.first, coords.second);
+	nodes.emplace_back(ptr1);
+}
+
+void GuiManager::drawNodes()
+{
+	for (const sf::CircleShape* node : nodes)
+		window.draw(*node);
+	window.display();
+}
+
+void GuiManager::freeNodes()
+{
+	for (auto p : nodes)
+		delete p;
+	nodes.clear();
+}
+
+
 void GuiManager::update(int elapsedTime)
 {
 	robot.followTrajectory(elapsedTime);

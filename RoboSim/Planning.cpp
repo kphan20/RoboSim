@@ -155,7 +155,7 @@ void OpenList::clear()
 	for (auto node : heap) delete node;
 }
 
-Trajectory* AStar::findPath(GuiManager& gui, sf::Vector2u windowSize)
+Trajectory* AStar::findPath(GuiManager& gui, sf::Vector2u windowSize, bool visualize)
 {
 	using milli = std::chrono::milliseconds;
 	auto start = std::chrono::high_resolution_clock::now();
@@ -193,8 +193,6 @@ Trajectory* AStar::findPath(GuiManager& gui, sf::Vector2u windowSize)
 	auto istart = sf::Vector2i(gui.robot.getPosition());
 	Node end = gui.getMousePos();
 	auto iend = sf::Vector2i(end);
-	//auto map = gui.getImage();
-	//map.setPixel(end.x, end.y, sf::Color::Green);
 	auto cmp = [](const AStarNode* a, const AStarNode* b) {
 		return *a < *b;
 	};
@@ -202,6 +200,11 @@ Trajectory* AStar::findPath(GuiManager& gui, sf::Vector2u windowSize)
 
 	AStarNode* startNode = new AStarNode(istart);
 	const AStarNode endNode(iend);
+
+	if (visualize) {
+		gui.addNode(endNode.coords(), sf::Color::Green);
+		gui.drawNodes();
+	}
 
 	auto endCoords = openNodes.convertCoords(endNode.coords());
 	if (grid[endCoords.first][endCoords.second])
@@ -224,11 +227,13 @@ Trajectory* AStar::findPath(GuiManager& gui, sf::Vector2u windowSize)
 			break;
 		}
 
-		// map.setPixel(curr->x, curr->y, sf::Color::Red);
-
-		//gui.updateTexture();
-		// auto color = map.getPixel(curr->x, curr->y);
-		//gui.draw();
+		if (visualize) {
+			gui.addNode(curr->coords(), sf::Color::Blue);
+			if (nodesExpanded % 10 == 0) {
+				gui.drawNodes();
+				sf::sleep(sf::milliseconds(10));
+			}
+		}
 
 		for (int dx = -1; dx < 2; dx++) {
 			for (int dy = -1; dy < 2; dy++) {
@@ -263,6 +268,8 @@ Trajectory* AStar::findPath(GuiManager& gui, sf::Vector2u windowSize)
 	delete[] grid;
 
 	openNodes.clear();
+	gui.freeNodes();
+
 	finish = std::chrono::high_resolution_clock::now();
 	std::cout << "Cleanup took " << std::chrono::duration_cast<milli>(finish - start).count() << " milliseconds\n";
 	std::cout << "Finished after " << nodesExpanded << " nodes in ";
