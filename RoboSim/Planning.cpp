@@ -242,8 +242,10 @@ Trajectory* AStar::findPath(GuiManager& gui, sf::Vector2u windowSize)
 
 				int diffX = endCoords.first - newX;
 				int diffY = endCoords.second - newY;
-				if (newX == xMax - 1) newX--;
-				if (newY == yMax - 1) newY--;
+				if (xRemainder > 0 && newX == xMax - 1)
+					newX--;
+				if (yRemainder > 0 && newY == yMax - 1)
+					newY--;
 				newX *= gui.nodeSize;
 				newY *= gui.nodeSize;
 				AStarNode* neighbor = new AStarNode(newX, newY, curr, gScore, diffX * diffX + diffY * diffY);
