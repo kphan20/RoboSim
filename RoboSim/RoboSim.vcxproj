@@ -153,6 +153,7 @@
     <ClInclude Include="AStar.h" />
     <ClInclude Include="Button.h" />
     <ClInclude Include="CenteredShape.h" />
+    <ClInclude Include="CSpace.h" />
     <ClInclude Include="GuiManager.h" />
     <ClInclude Include="Planning.h" />
     <ClInclude Include="Robot.h" />

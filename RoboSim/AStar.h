@@ -52,7 +52,7 @@ public:
 	void insert(AStarNode*);
 	AStarNode* pop();
 	bool empty();
-	void clear();
+	void cleanUp();
 	std::pair<int, int> convertCoords(const std::pair<int, int>&);
 private:
 	const int nodeSize, xRem, yRem;

@@ -1,4 +1,5 @@
 #include "AStar.h"
+#include "CSpace.h"
 #include <iostream>
 #include <set>
 #include <chrono>
@@ -133,7 +134,7 @@ AStarNode* OpenList::pop()
 	return node;
 }
 
-void OpenList::clear()
+void OpenList::cleanUp()
 {
 	for (auto node : heap) delete node;
 }
@@ -160,34 +161,8 @@ Trajectory* AStar::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& g
 	auto start = std::chrono::high_resolution_clock::now();
 	size_t nodesExpanded = 0;
 	Trajectory* result = new Trajectory();
+	CSpace cSpace(robotRad, robotPos, gui, windowSize);
 	bool xRemainder = windowSize.x % gui.nodeSize, yRemainder = windowSize.y % gui.nodeSize;
-	const int xMax = windowSize.x / gui.nodeSize + (xRemainder > 0);
-	const int yMax = windowSize.y / gui.nodeSize + (yRemainder > 0);
-	bool** grid = new bool* [xMax];
-	for (int i = 0; i < xMax; i++)
-	{
-		grid[i] = new bool[yMax];
-	}
-
-	auto obstacles = gui.getShapes();
-	for (auto& shape : *obstacles)
-	{
-		sf::IntRect bounds(shape->getNewGlobalBounds(robotRad));
-		for (int i = 0; i < bounds.width; i++) {
-			for (int j = 0; j < bounds.height; j++) {
-				int xCoord = bounds.left + i;
-				int yCoord = bounds.top + j;
-				int adjX = xCoord / gui.nodeSize;
-				if (xCoord >= windowSize.x - xRemainder) adjX++;
-				int adjY = yCoord / gui.nodeSize;
-				if (yCoord >= windowSize.y - yRemainder) adjY++;
-				if (xCoord < 0 || xCoord >= windowSize.x
-					|| yCoord < 0 || yCoord >= windowSize.y || !grid[adjX][adjY])
-					continue;
-				grid[adjX][adjY] = !shape->contains(sf::Vector2f(xCoord, yCoord), robotRad);
-			}
-		}
-	}
 	auto istart = sf::Vector2i(robotPos);
 	Node end = gui.getMousePos();
 	auto iend = sf::Vector2i(end);
@@ -204,8 +179,8 @@ Trajectory* AStar::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& g
 		gui.drawNodes();
 	}
 
-	auto endCoords = openNodes.convertCoords(endNode.coords());
-	if (grid[endCoords.first][endCoords.second])
+	auto endCoords = endNode.coords();
+	if (cSpace.contains(endNode.coords()))
 		openNodes.insert(startNode);
 	auto finish = std::chrono::high_resolution_clock::now();
 	std::cout << "Setup took " << std::chrono::duration_cast<milli>(finish - start).count() << " milliseconds\n";
@@ -214,11 +189,12 @@ Trajectory* AStar::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& g
 	while (!openNodes.empty())
 	{
 		AStarNode* curr = openNodes.pop();
+		auto currCoords = curr->coords();
 		nodesExpanded++;
 #if DEBUG
 		std::cout << curr->x << ", " << curr->y << '\n';
 #endif
-		if (*curr == endNode || openNodes.convertCoords(curr->coords()) == endCoords)
+		if (cSpace.endReached(currCoords, endCoords))
 		{
 			delete result;
 			result = constructPath(*startNode, *curr);
@@ -236,21 +212,13 @@ Trajectory* AStar::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& g
 		for (int dx = -1; dx < 2; dx++) {
 			for (int dy = -1; dy < 2; dy++) {
 				if (dx == 0 && dy == 0) continue;
-				auto newCoords = openNodes.convertCoords(curr->coords());
-				int newX = newCoords.first + dx;
-				if (newX < 0 || newX >= xMax) continue;
-				int newY = newCoords.second + dy;
-				if (newY < 0 || newY >= yMax || !grid[newX][newY]) continue;
+				int newX = currCoords.first + dx * gui.nodeSize;
+				int newY = currCoords.second + dy * gui.nodeSize;
+				if (!cSpace.contains(newX, newY)) continue;
 				int gScore = curr->g + 1;
 
 				int diffX = endCoords.first - newX;
 				int diffY = endCoords.second - newY;
-				if (xRemainder > 0 && newX == xMax - 1)
-					newX--;
-				if (yRemainder > 0 && newY == yMax - 1)
-					newY--;
-				newX *= gui.nodeSize;
-				newY *= gui.nodeSize;
 				AStarNode* neighbor = new AStarNode(newX, newY, curr, gScore, diffX * diffX + diffY * diffY);
 
 				openNodes.insert(neighbor);
@@ -261,11 +229,8 @@ Trajectory* AStar::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& g
 	std::cout << "Search took " << std::chrono::duration_cast<milli>(finish - start).count() << " milliseconds\n";
 	start = std::chrono::high_resolution_clock::now();
 	// frees memory allocated by grid
-	for (int i = 0; i < xMax; i++)
-		delete[] grid[i];
-	delete[] grid;
-
-	openNodes.clear();
+	cSpace.cleanUp();
+	openNodes.cleanUp();
 	gui.freeNodes();
 
 	finish = std::chrono::high_resolution_clock::now();
