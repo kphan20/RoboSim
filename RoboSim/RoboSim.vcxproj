@@ -147,6 +147,7 @@
     <ClCompile Include="GuiManager.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Robot.cpp" />
+    <ClCompile Include="RRT.cpp" />
     <ClCompile Include="Trajectory.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -157,6 +158,7 @@
     <ClInclude Include="GuiManager.h" />
     <ClInclude Include="Planning.h" />
     <ClInclude Include="Robot.h" />
+    <ClInclude Include="RRT.h" />
     <ClInclude Include="Trajectory.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
