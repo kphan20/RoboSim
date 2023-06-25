@@ -197,8 +197,13 @@ private:
 class RRT : public Planner
 {
 public:
-	RRT(int k, int goalBias);
+	RRT(int k, int goalBias, int steerRes = 1);
 	Trajectory* findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui, sf::Vector2u windowSize, bool visualize = false) const;
 private:
-	int k, goalBias;
+	int k, goalBias, steerRes;
+	std::pair<int, int> incrementCoord(std::pair<int, int> coord, int stepSize, std::pair<int, int> direction) const
+	{
+		return std::pair<int, int>(coord.first + direction.first * stepSize,
+			coord.second + direction.second * stepSize);
+	}
 };

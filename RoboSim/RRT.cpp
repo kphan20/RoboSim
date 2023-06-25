@@ -5,10 +5,11 @@
 #define PI 3.1415
 #endif
 
-RRT::RRT(int k, int goalBias)
+RRT::RRT(int k, int goalBias, int steerRes)
 {
 	this->k = k;
 	this->goalBias = goalBias;
+	this->steerRes = steerRes;
 }
 
 Trajectory* RRT::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui, sf::Vector2u windowSize, bool visualize) const
@@ -92,6 +93,12 @@ Trajectory* RRT::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui
 		for (int j = 0; j < len; j++) {
 			if (cSpace.contains(newCoords) && tree.put(newCoords, nearestNode)) {
 				valid = true;
+				auto steerTest = std::pair<int, int>(newCoords);
+				for (int step = 1; step < steerRes; step++) {
+					if (!cSpace.contains(steerTest) || !tree.put(newCoords, nearestNode)) break;
+					newCoords = steerTest;
+					if (cSpace.endReached(steerTest, randPoint)) break;
+				}
 				break;
 			}
 			if (useP1) {
@@ -102,8 +109,8 @@ Trajectory* RRT::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui
 				newDirection = directions[p2];
 				p2 = (p2 + 1) % len;
 			}
-			newCoords = std::pair<int, int>(nearestPoint.first + newDirection.first * gui.nodeSize,
-				nearestPoint.second + newDirection.second * gui.nodeSize);
+			newCoords = incrementCoord(nearestPoint, gui.nodeSize, newDirection);//std::pair<int, int>(nearestPoint.first + newDirection.first * gui.nodeSize,
+			//nearestPoint.second + newDirection.second * gui.nodeSize);
 
 			useP1 = !useP1;
 		}
