@@ -1,6 +1,6 @@
 #include "Robot.h"
 #include "AStar.h"
-#include "RRT.h"
+#include "RRTStar.h"
 #include <iostream>
 #include <chrono>
 
@@ -81,10 +81,11 @@ int main()
 	sf::RenderWindow window(sf::VideoMode(windowWidth, windowLength), "SFML works!", sf::Style::Fullscreen);
 
 	AStar plan;
-	RRT plan1(50000, 30);
-	Robot robot(plan1, 75);
+	RRT plan1(50000, 30, 1);
+	RRTStar plan2(3, 10000, 30, 5);
+	Robot robot(plan, 75);
 
-	GuiManager gui(window, 4);
+	GuiManager gui(window, 5);
 
 	std::cout << window.getSize().x << ',' << window.getSize().y << '\n';
 
