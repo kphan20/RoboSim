@@ -5,6 +5,7 @@
 #include <chrono>
 
 #define DEBUG 0
+#define VISUALIZE false
 
 enum GameMode { placement, trajTesting };
 
@@ -57,7 +58,7 @@ void handletrajTesting(sf::RenderWindow& window, GuiManager& gui, sf::Event& eve
 				*gameMode = placement;
 				using milli = std::chrono::milliseconds;
 				start = std::chrono::high_resolution_clock::now();
-				robot.plan(gui, window.getSize(), true);
+				robot.plan(gui, window.getSize(), VISUALIZE);
 				finish = std::chrono::high_resolution_clock::now();
 				std::cout << std::chrono::duration_cast<milli>(finish - start).count() << " milliseconds\n";
 				gui.toggleButtons();

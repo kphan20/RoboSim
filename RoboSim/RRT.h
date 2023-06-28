@@ -3,6 +3,10 @@
 #include "CSpace.h"
 #include <random>
 
+#ifndef PI
+#define PI 3.1415
+#endif
+
 class RRTCSpace : public CSpace
 {
 public:
@@ -36,7 +40,7 @@ public:
 	std::pair<int, int> maxDims() {
 		return std::pair<int, int>(windowX, windowY);
 	}
-private:
+protected:
 	size_t bufferInd;
 	std::vector<std::pair<int, int>*> randCoords;
 };
@@ -45,16 +49,16 @@ class KDTreeNode {
 public:
 	KDTreeNode* left;
 	KDTreeNode* right;
-	const KDTreeNode* parent;
+	KDTreeNode* parent;
 	const std::pair<int, int> c;
-	KDTreeNode(const std::pair<int, int>& coords, const KDTreeNode* parent = nullptr) :
+	KDTreeNode(const std::pair<int, int>& coords, KDTreeNode* parent = nullptr) :
 		c(coords), parent(parent) {
 		left = nullptr;
 		right = nullptr;
 	}
 	bool lessThan(std::pair<int, int> other, bool isX)
 	{
-		return isX ? c.first < other.first : c.second < other.second;
+		return isX ? c.first >= other.first : c.second >= other.second;
 	}
 	int distSquaredTo(const std::pair<int, int>& other)
 	{
@@ -65,14 +69,18 @@ public:
 
 	const Node& getPathNode() const
 	{
-		return sf::Vector2f(c.first, c.second);
+		return sf::Vector2f((float)c.first, (float)c.second);
 	}
+
+	void cleanUp() {}
 };
 
 class KDRect
 {
 public:
-	KDRect() {};
+	KDRect() {
+		l = r = t = b = 0;
+	};
 	void Init(int left, int right, int top, int bottom)
 	{
 		l = left;
@@ -86,30 +94,33 @@ public:
 		const int dy = std::max({ t - coords.second, 0, coords.second - b });
 		return dx * dx + dy * dy;
 	}
-private:
 	int l, r, t, b;
 };
 
+template <typename TreeNode>
 class KDTree
 {
 public:
+	TreeNode* recentPutNode = nullptr;
 	KDTree(const std::pair<int, int>& start, std::pair<int, int> maxDims) :
 		xMax(maxDims.first), yMax(maxDims.second)
 	{
-		root = new KDTreeNode(start);
+		root = new TreeNode(start);
 	}
-	bool put(const std::pair<int, int>& coords, const KDTreeNode* parent) {
+	virtual bool put(const std::pair<int, int>& coords, TreeNode* parent) {
 		bool isX = true;
-		KDTreeNode* curr = root;
+		TreeNode* curr = root;
 		while (curr != nullptr)
 		{
 			if (curr->c == coords) {
+				recentPutNode = curr;
 				return false;
 			}
 			if (curr->lessThan(coords, isX))
 			{
 				if (curr->left == nullptr) {
-					curr->left = new KDTreeNode(coords, parent);
+					curr->left = new TreeNode(coords, parent);
+					recentPutNode = curr->left;
 					return true;
 				}
 				curr = curr->left;
@@ -117,7 +128,8 @@ public:
 			else
 			{
 				if (curr->right == nullptr) {
-					curr->right = new KDTreeNode(coords, parent);
+					curr->right = new TreeNode(coords, parent);
+					recentPutNode = curr->right;
 					return true;
 				}
 				curr = curr->right;
@@ -126,8 +138,8 @@ public:
 		}
 		return false;
 	}
-	const KDTreeNode* nearest(const std::pair<int, int>& coords) {
-		KDTreeNode* champ = root;
+	TreeNode* nearest(const std::pair<int, int>& coords) {
+		TreeNode* champ = root;
 		champ = _nearest(root, coords, champ, true, 0, xMax, 0, yMax);
 		return champ;
 	}
@@ -135,10 +147,10 @@ public:
 	{
 		_cleanUp(root);
 	}
-private:
-	KDTreeNode* root;
+protected:
+	TreeNode* root;
 	const int xMax, yMax;
-	KDTreeNode* _nearest(KDTreeNode* curr, const std::pair<int, int>& coords, KDTreeNode* champ, bool isX,
+	TreeNode* _nearest(TreeNode* curr, const std::pair<int, int>& coords, TreeNode* champ, bool isX,
 		int left, int right, int top, int bottom)
 	{
 		int champDist = champ->distSquaredTo(coords);
@@ -163,32 +175,33 @@ private:
 		if (curr->lessThan(coords, isX))
 		{
 			if (curr->left != nullptr && leftRect.distSquaredTo(coords) < champDist) {
-				champ = _nearest(curr->left, coords, champ, !isX, left, right, top, bottom);
+				champ = _nearest(curr->left, coords, champ, !isX, leftRect.l, leftRect.r, leftRect.t, leftRect.b);
 				champDist = champ->distSquaredTo(coords);
 			}
 			if (curr->right != nullptr && rightRect.distSquaredTo(coords) < champDist)
 			{
-				champ = _nearest(curr->right, coords, champ, !isX, left, right, top, bottom);
+				champ = _nearest(curr->right, coords, champ, !isX, rightRect.l, rightRect.r, rightRect.t, rightRect.b);
 			}
 		}
 		else
 		{
 			if (curr->right != nullptr && rightRect.distSquaredTo(coords) < champDist)
 			{
-				champ = _nearest(curr->right, coords, champ, !isX, left, right, top, bottom);
+				champ = _nearest(curr->right, coords, champ, !isX, rightRect.l, rightRect.r, rightRect.t, rightRect.b);
 				champDist = champ->distSquaredTo(coords);
 			}
 			if (curr->left != nullptr && leftRect.distSquaredTo(coords) < champDist) {
-				champ = _nearest(curr->left, coords, champ, !isX, left, right, top, bottom);
+				champ = _nearest(curr->left, coords, champ, !isX, leftRect.l, leftRect.r, leftRect.t, leftRect.b);
 			}
 		}
 		return champ;
 	}
-	void _cleanUp(KDTreeNode* curr)
+	void _cleanUp(TreeNode* curr)
 	{
 		if (curr == nullptr) return;
 		_cleanUp(curr->left);
 		_cleanUp(curr->right);
+		curr->cleanUp();
 		delete curr;
 	}
 };
@@ -198,8 +211,8 @@ class RRT : public Planner
 {
 public:
 	RRT(int k, int goalBias, int steerRes = 1);
-	Trajectory* findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui, sf::Vector2u windowSize, bool visualize = false) const;
-private:
+	virtual Trajectory* findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui, sf::Vector2u windowSize, bool visualize = false) const;
+protected:
 	int k, goalBias, steerRes;
 	std::pair<int, int> incrementCoord(std::pair<int, int> coord, int stepSize, std::pair<int, int> direction) const
 	{

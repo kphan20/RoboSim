@@ -1,5 +1,6 @@
 #include "AStar.h"
 #include "CSpace.h"
+#include "VisualizerConstants.h"
 #include <iostream>
 #include <set>
 #include <chrono>
@@ -27,7 +28,7 @@ AStarNode::AStarNode(sf::Vector2i& pos, AStarNode* parent, int g, int h) : x(pos
 
 const Node& AStarNode::getPathNode()
 {
-	return sf::Vector2f(x, y);
+	return sf::Vector2f((float)x, (float)y);
 }
 
 OpenList::OpenList(int nodeSize, int xR, int yR, sf::Vector2u windowSize) : nodeSize(nodeSize), xRem(xR), yRem(yR), windowSize(windowSize)
@@ -42,8 +43,8 @@ OpenList::OpenList(int nodeSize, int xR, int yR, sf::Vector2u windowSize) : node
 
 std::pair<int, int> OpenList::convertCoords(const std::pair<int, int>& coords)
 {
-	const int x = coords.first / nodeSize + (coords.first >= windowSize.x - xRem ? 1 : 0);
-	const int y = coords.second / nodeSize + (coords.second >= windowSize.y - yRem ? 1 : 0);
+	const int x = coords.first / nodeSize + (coords.first >= (int)windowSize.x - xRem ? 1 : 0);
+	const int y = coords.second / nodeSize + (coords.second >= (int)windowSize.y - yRem ? 1 : 0);
 	return std::pair<int, int>(x, y);
 }
 
@@ -202,7 +203,7 @@ Trajectory* AStar::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& g
 		}
 
 		if (visualize) {
-			gui.addNode(curr->coords(), sf::Color::Blue);
+			gui.addNode(curr->coords(), NODE_COLOR);
 			if (nodesExpanded % 10 == 0) {
 				gui.drawNodes();
 				sf::sleep(sf::milliseconds(10));

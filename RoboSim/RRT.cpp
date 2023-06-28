@@ -1,9 +1,6 @@
 #include "RRT.h"
+#include "VisualizerConstants.h"
 #include <array>
-
-#ifndef PI
-#define PI 3.1415
-#endif
 
 RRT::RRT(int k, int goalBias, int steerRes)
 {
@@ -19,11 +16,15 @@ Trajectory* RRT::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui
 	const std::pair<int, int> start(robotPos.x, robotPos.y);
 	auto end = gui.getMousePos();
 	auto endCoords = std::pair<int, int>(end.x, end.y);
+	if (!cSpace.contains(endCoords)) {
+		cSpace.cleanUp();
+		return result;
+	}
 	if (visualize) {
 		gui.addNode(endCoords, sf::Color::Green);
 		gui.drawNodes();
 	}
-	KDTree tree(start, cSpace.maxDims());
+	KDTree<KDTreeNode> tree(start, cSpace.maxDims());
 
 	std::array<std::pair<int, int>, 8> directions
 	{ {std::pair<int, int>(1, 1),std::pair<int, int>(0, 1),
@@ -46,7 +47,7 @@ Trajectory* RRT::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui
 		else {
 			randPoint = cSpace.sample();
 		}
-		const KDTreeNode* nearestNode = tree.nearest(randPoint);
+		KDTreeNode* nearestNode = tree.nearest(randPoint);
 		std::pair<int, int> nearestPoint = nearestNode->c;
 		if (nearestPoint == randPoint) continue; // want to avoid sampling repeat coords
 		int dx = randPoint.first - nearestPoint.first;
@@ -81,8 +82,9 @@ Trajectory* RRT::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui
 		}
 
 		auto newDirection = directions[directionInd];
-		auto newCoords = std::pair<int, int>(nearestPoint.first + newDirection.first * gui.nodeSize,
-			nearestPoint.second + newDirection.second * gui.nodeSize);
+		auto newCoords = incrementCoord(nearestPoint, gui.nodeSize, newDirection);
+		/*std::pair<int, int>(nearestPoint.first + newDirection.first * gui.nodeSize,
+			nearestPoint.second + newDirection.second * gui.nodeSize);*/
 
 		bool valid = false;
 
@@ -95,9 +97,13 @@ Trajectory* RRT::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui
 				valid = true;
 				auto steerTest = std::pair<int, int>(newCoords);
 				for (int step = 1; step < steerRes; step++) {
-					if (!cSpace.contains(steerTest) || !tree.put(newCoords, nearestNode)) break;
+					steerTest = incrementCoord(steerTest, gui.nodeSize, newDirection);
+					if (!cSpace.contains(steerTest) || !tree.put(steerTest, nearestNode)) break;
+					if (visualize) {
+						gui.addNode(newCoords, sf::Color::Blue);
+					}
 					newCoords = steerTest;
-					if (cSpace.endReached(steerTest, randPoint)) break;
+					if (cSpace.endReached(steerTest, newCoords)) break;
 				}
 				break;
 			}
@@ -120,7 +126,7 @@ Trajectory* RRT::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui
 				break;
 			}
 			if (visualize) {
-				gui.addNode(newCoords, sf::Color::Blue);
+				gui.addNode(newCoords, NODE_COLOR);
 				if (i % 10 == 0) {
 					gui.drawNodes();
 					sf::sleep(sf::milliseconds(1));

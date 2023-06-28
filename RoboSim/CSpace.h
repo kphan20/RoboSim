@@ -6,8 +6,8 @@ class CSpace
 public:
 	CSpace(float robotRad, sf::Vector2f robotPos, GuiManager& gui, sf::Vector2u windowSize) :
 		nodeSize(gui.nodeSize), xRemainder(windowSize.x% nodeSize), yRemainder(windowSize.y% gui.nodeSize),
-		windowX(windowSize.x), windowY(windowSize.y), xMax(windowSize.x / gui.nodeSize + (xRemainder > 0)),
-		yMax(windowSize.y / gui.nodeSize + (yRemainder > 0))
+		windowX(windowSize.x), windowY(windowSize.y), xMax(windowSize.x / gui.nodeSize + (int)(xRemainder > 0)),
+		yMax(windowSize.y / gui.nodeSize + (int)(yRemainder > 0))
 	{
 		grid = new bool* [xMax];
 		for (int i = 0; i < xMax; i++)
@@ -24,13 +24,13 @@ public:
 					int xCoord = bounds.left + i;
 					int yCoord = bounds.top + j;
 					int adjX = xCoord / gui.nodeSize;
-					if (xCoord >= windowSize.x - xRemainder) adjX++;
+					if (xCoord >= (int)windowSize.x - xRemainder) adjX++;
 					int adjY = yCoord / gui.nodeSize;
-					if (yCoord >= windowSize.y - yRemainder) adjY++;
-					if (xCoord < 0 || xCoord >= windowSize.x
-						|| yCoord < 0 || yCoord >= windowSize.y || !grid[adjX][adjY])
+					if (yCoord >= (int)windowSize.y - yRemainder) adjY++;
+					if (xCoord < 0 || xCoord >= (int)windowSize.x
+						|| yCoord < 0 || yCoord >= (int)windowSize.y || !grid[adjX][adjY])
 						continue;
-					grid[adjX][adjY] = !shape->contains(sf::Vector2f(xCoord, yCoord), robotRad);
+					grid[adjX][adjY] = !shape->contains(sf::Vector2f((float)xCoord, (float)yCoord), robotRad);
 				}
 			}
 		}
@@ -63,7 +63,7 @@ public:
 protected:
 	bool** grid;
 	const int nodeSize, windowX, windowY, xMax, yMax;
-	const bool xRemainder, yRemainder;
+	const int xRemainder, yRemainder;
 	std::pair<int, int> convertCoords(const std::pair<int, int>& coords)
 	{
 		const int x = coords.first / nodeSize + (coords.first >= windowX - xRemainder ? 1 : 0);

@@ -148,6 +148,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Robot.cpp" />
     <ClCompile Include="RRT.cpp" />
+    <ClCompile Include="RRTStar.cpp" />
     <ClCompile Include="Trajectory.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -159,7 +160,9 @@
     <ClInclude Include="Planning.h" />
     <ClInclude Include="Robot.h" />
     <ClInclude Include="RRT.h" />
+    <ClInclude Include="RRTStar.h" />
     <ClInclude Include="Trajectory.h" />
+    <ClInclude Include="VisualizerConstants.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -121,16 +121,23 @@ const ShapeList* GuiManager::getShapes()
 
 void GuiManager::addNode(std::pair<int, int> coords, sf::Color color)
 {
-	auto ptr1 = new sf::CircleShape(nodeSize);
+	auto ptr1 = new CenteredCircle((float)nodeSize);
 	ptr1->setFillColor(color);
-	ptr1->setPosition(coords.first, coords.second);
+	ptr1->setPosition((float)coords.first, (float)coords.second);
 	nodes.emplace_back(ptr1);
+}
+
+void GuiManager::addEdge(sf::Vertex& from, sf::Vertex& to) {
+	edges.emplace_back(from);
+	edges.emplace_back(to);
 }
 
 void GuiManager::drawNodes()
 {
-	for (const sf::CircleShape* node : nodes)
-		window.draw(*node);
+	for (CenteredCircle* node : nodes)
+		window.draw(node->getDrawable());
+	if (edges.size() > 0)
+		window.draw(&edges[0], edges.size(), sf::Lines);
 	window.display();
 }
 
@@ -139,4 +146,5 @@ void GuiManager::freeNodes()
 	for (auto p : nodes)
 		delete p;
 	nodes.clear();
+	edges.clear();
 }

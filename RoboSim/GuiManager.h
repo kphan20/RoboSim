@@ -8,7 +8,7 @@
 typedef std::vector<std::unique_ptr<CustomShape>> ShapeList;
 typedef std::vector<std::unique_ptr<Button>> GuiList;
 typedef std::vector<std::shared_ptr<ClickAction>> ActionList;
-typedef std::vector<sf::CircleShape*> VisualizerList;
+typedef std::vector<CenteredCircle*> VisualizerList;
 
 
 class GuiManager
@@ -29,6 +29,7 @@ public:
 
 	// pathfinding api
 	void addNode(std::pair<int, int> coords, sf::Color);
+	void addEdge(sf::Vertex&, sf::Vertex&);
 	void drawNodes();
 	void freeNodes();
 
@@ -41,7 +42,7 @@ private:
 	GuiList guiObjects{};
 	ActionList actions{};
 	VisualizerList nodes;
-
+	std::vector<sf::Vertex> edges;
 	bool buttonsVisible;
 	Button dropDownToggle;
 	CenteredCircle dropDownTri;
