@@ -23,6 +23,7 @@ public:
 	virtual sf::FloatRect getNewGlobalBounds(float robotRad) const = 0;
 	virtual void setFillColor(const sf::Color& color) = 0;
 	virtual const sf::Shape& getDrawable() = 0;
+	virtual void setOutlineThickness(float) = 0;
 };
 
 template <typename Shape>
@@ -64,6 +65,12 @@ public:
 	}
 	void setFillColor(const sf::Color& color) override {
 		shape.setFillColor(color);
+	}
+	void setOutlineThickness(float thickness) override {
+		shape.setOutlineThickness(thickness);
+	}
+	void rotate(float angle) {
+		shape.rotate(angle);
 	}
 };
 

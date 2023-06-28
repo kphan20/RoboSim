@@ -21,14 +21,13 @@ void handlePlacement(sf::RenderWindow& window, GuiManager& gui, sf::Event& event
 				break;
 			case sf::Keyboard::N:
 				gui.addCircle();
-				break;
-			case sf::Keyboard::A:
 				gui.addButton();
 				break;
 			case sf::Keyboard::Escape:
 				window.close();
 				break;
 			case sf::Keyboard::W:
+				gui.toggleButtons();
 				*gameMode = trajTesting;
 				break;
 			default:
@@ -61,8 +60,10 @@ void handletrajTesting(sf::RenderWindow& window, GuiManager& gui, sf::Event& eve
 				robot.plan(gui, window.getSize(), true);
 				finish = std::chrono::high_resolution_clock::now();
 				std::cout << std::chrono::duration_cast<milli>(finish - start).count() << " milliseconds\n";
+				gui.toggleButtons();
 				break;
 			case sf::Keyboard::W:
+				gui.toggleButtons();
 				*gameMode = placement;
 				break;
 			default:

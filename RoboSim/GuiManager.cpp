@@ -1,48 +1,81 @@
 #include "GuiManager.h"
 #include <iostream>
 
-GuiManager::GuiManager(sf::RenderWindow& win, int sizePerNode) : window(win), nodeSize(sizePerNode)
+const float SELECT_OUTLINE_THICKNESS = 5.0;
+const sf::Vector2f TOGGLE_BUTTON_SIZE = sf::Vector2f(50.0f, 50.0f);
+const sf::Vector2f BUTTON_SIZE = sf::Vector2f(100.0f, 100.0f);
+const float BUTTON_DIST = 5.0f;
+const int TRIANGLE_SIZE = 20;
+const int RIGHT_OFFSET = 100;
+const float TOP_OFFSET = 50.0f;
+
+GuiManager::GuiManager(sf::RenderWindow& win, int sizePerNode) :
+	window(win), nodeSize(sizePerNode), dropDownToggle(win, TOGGLE_BUTTON_SIZE),
+	dropDownTri(TRIANGLE_SIZE, 3)
 {
 	currShapeIdx = 0;
 	currShapeIdxPtr = &currShapeIdx;
+	buttonsVisible = true;
+	dropDownToggle.setPosition(sf::Vector2f((float)(win.getSize().x - RIGHT_OFFSET), TOP_OFFSET));
+	dropDownTri.setPosition(dropDownToggle.getPosition());
+	dropDownToggle.setFillColor(sf::Color::Blue);
+	dropDownTri.setFillColor(sf::Color::White);
+	auto toggle = std::make_shared<ClickAction>([this](size_t filler)-> void {
+		toggleButtons();
+		}
+	);
+	dropDownToggle.setAction(toggle);
 }
 
 void GuiManager::addCircle()
 {
 	auto ptr1 = std::make_unique<CenteredCircle>(75.0f);
 	ptr1->setFillColor(sf::Color::Yellow);
+	ptr1->shape.setOutlineColor(sf::Color::White);
+	if (moveableShapes.size() == 0) ptr1->setOutlineThickness(SELECT_OUTLINE_THICKNESS);
 	moveableShapes.emplace_back(std::move(ptr1));
 }
 
 void GuiManager::addButton()
 {
 	auto dims = window.getSize();
-	auto newButton = std::make_unique<Button>(window, sf::Vector2f(100, 100));
+	auto newButton = std::make_unique<Button>(window, BUTTON_SIZE);
 	newButton->setFillColor(sf::Color::Yellow);
 	// for now the only gui objects are buttons
 	if (++numButtons >= guiObjects.size()) {
 		size_t numButtonsCopy = numButtons - 1;
 		auto newAction = std::make_shared<ClickAction>([this, numButtonsCopy](size_t val) -> void {
-			std::cout << numButtonsCopy << '\n';
-		*currShapeIdxPtr = numButtonsCopy;
+			moveableShapes[currShapeIdx]->setOutlineThickness(0.0);
+		currShapeIdx = numButtonsCopy;
+		moveableShapes[currShapeIdx]->setOutlineThickness(SELECT_OUTLINE_THICKNESS);
 		return;
 			});
 		actions.emplace_back(newAction);
 	}
 	std::shared_ptr<ClickAction> action = { actions[numButtons - 1] };
 	newButton->setAction(action);
-	size_t actionIdx = guiObjects.size();
-	newButton->setPosition(sf::Vector2f(std::rand() % dims.x, std::rand() % dims.y));
-	std::cout << newButton->getPosition().x << ',' << newButton->getPosition().y << '\n';
+	sf::Vector2f togglePos = dropDownToggle.getPosition();
+	newButton->setPosition(togglePos.x, togglePos.y + (guiObjects.size() + 1) * (BUTTON_SIZE.y + BUTTON_DIST));
 	guiObjects.emplace_back(std::move(newButton));
+}
+
+void GuiManager::toggleButtons() {
+	float thickness = 0.0;
+	buttonsVisible = !buttonsVisible;
+	if (buttonsVisible) thickness = SELECT_OUTLINE_THICKNESS;
+	if (moveableShapes.size() > 0)
+		moveableShapes[currShapeIdx]->setOutlineThickness(thickness);
+	for (const std::unique_ptr<Button>& guiObject : guiObjects)
+		guiObject->isVisible = buttonsVisible;
+	dropDownTri.rotate(180);
 }
 
 void GuiManager::handleInput()
 {
 	for (const std::unique_ptr<Button>& guiObject : guiObjects)
 		guiObject->onClick();
+	dropDownToggle.onClick();
 	auto pos = sf::Vector2f(sf::Mouse::getPosition(window));
-	std::cout << pos.x << ',' << pos.y << '\n';
 }
 
 void GuiManager::scroll()
@@ -55,14 +88,25 @@ void GuiManager::draw()
 {
 	for (const std::unique_ptr<CustomShape>& moveableShape : moveableShapes)
 		window.draw(moveableShape->getDrawable());
-	for (const std::unique_ptr<Button>& guiObject : guiObjects)
-		window.draw(guiObject->shape);
+
+	window.draw(dropDownToggle.getDrawable());
+	window.draw(dropDownTri.getDrawable());
+	if (buttonsVisible) {
+		for (const std::unique_ptr<Button>& guiObject : guiObjects)
+			window.draw(guiObject->shape);
+	}
 }
 
 void GuiManager::moveSelected()
 {
-	if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && moveableShapes.size() > 0)
-		moveableShapes[currShapeIdx]->setPosition(sf::Vector2f(sf::Mouse::getPosition(window)));
+	if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && moveableShapes.size() > 0) {
+		Node mousePos = getMousePos();
+		if (buttonsVisible)
+			for (const std::unique_ptr<Button>& guiObject : guiObjects)
+				if (guiObject->contains(mousePos)) return;
+		if (dropDownToggle.contains(mousePos)) return;
+		moveableShapes[currShapeIdx]->setPosition(getMousePos());
+	}
 }
 
 Node GuiManager::getMousePos()

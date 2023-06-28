@@ -10,6 +10,7 @@ public:
 	Button(const sf::RenderWindow& window, const sf::Vector2f& size = sf::Vector2f(0, 0));
 	void setAction(std::shared_ptr<ClickAction>&);
 	void onClick();
+	bool isVisible;
 private:
 	std::shared_ptr<ClickAction> onClickAction;
 	const sf::RenderWindow& window;

@@ -25,6 +25,7 @@ public:
 	void moveSelected();
 	Node getMousePos();
 	const ShapeList* getShapes();
+	void toggleButtons();
 
 	// pathfinding api
 	void addNode(std::pair<int, int> coords, sf::Color);
@@ -40,4 +41,8 @@ private:
 	GuiList guiObjects{};
 	ActionList actions{};
 	VisualizerList nodes;
+
+	bool buttonsVisible;
+	Button dropDownToggle;
+	CenteredCircle dropDownTri;
 };
