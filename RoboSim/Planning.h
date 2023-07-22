@@ -6,5 +6,6 @@
 class Planner
 {
 public:
-	virtual Trajectory* findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui, sf::Vector2u windowSize, bool visualize = false) const = 0;
+	virtual Trajectory* findPath(sf::Vector2f robotPos, int nodeSize, Node end, GuiManager& gui, sf::Vector2u windowSize, bool visualize = false) const = 0;
+	virtual void setUp(float, sf::Vector2f, GuiManager&, sf::Vector2u) = 0;
 };

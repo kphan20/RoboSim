@@ -1,13 +1,13 @@
 #include "Robot.h"
 #include <cmath>
 
-Robot::Robot(Planner& plan) : CenteredCircle(), planner(plan)
+Robot::Robot(Planner& plan, std::mutex& lock) : CenteredCircle(), planner(plan), m(lock)
 {
 	this->setFillColor(sf::Color::Red);
 	currTrajectory = new (std::nothrow) Trajectory;
 }
 
-Robot::Robot(Planner& plan, float radius, size_t pointCount) : CenteredCircle(radius, pointCount), planner(plan)
+Robot::Robot(Planner& plan, std::mutex& lock, float radius, size_t pointCount) : CenteredCircle(radius, pointCount), planner(plan), m(lock)
 {
 	this->setFillColor(sf::Color::Red);
 	currTrajectory = new (std::nothrow) Trajectory;
@@ -15,7 +15,29 @@ Robot::Robot(Planner& plan, float radius, size_t pointCount) : CenteredCircle(ra
 
 void Robot::plan(GuiManager& gui, sf::Vector2u windowSize, bool visualize)
 {
-	setTrajectory(planner.findPath(getRadius(), getPosition(), gui, windowSize, visualize));
+	planner.setUp(getRadius(), getPosition(), gui, windowSize);
+	setTrajectory(planner.findPath(getPosition(), gui.nodeSize, gui.getMousePos(), gui, windowSize, visualize));
+}
+
+void Robot::schedulePlan(GuiManager& gui, sf::Vector2u windowSize, std::atomic_flag& pause, std::atomic_flag& ended)
+{
+	while (!ended.test())
+	{
+		pause.wait(false);
+		sf::Vector2f pos;
+		int nodeSize;
+		Node end;
+		// flag.wait(lock);//, [pause] {return !*pause; });
+		{
+			std::lock_guard<std::mutex> lock(m);
+			pos = getPosition();
+			nodeSize = gui.nodeSize;
+			end = gui.getMousePos();
+			planner.setUp(getRadius(), pos, gui, windowSize);
+		}
+		setTrajectory(planner.findPath(pos, nodeSize, end, gui, windowSize, false));
+		//sf::sleep(sf::milliseconds(100));
+	}
 }
 
 // probably useless
@@ -27,6 +49,7 @@ void Robot::followTrajectory()
 
 void Robot::followTrajectory(float dist)
 {
+	const std::lock_guard<std::mutex> lock(m);
 	if (currTrajectory)
 		followTrajectory(*currTrajectory, dist);
 }
@@ -40,10 +63,18 @@ void Robot::followTrajectory(Trajectory& trajectory)
 
 void Robot::followTrajectory(Trajectory& trajectory, float dist)
 {
+	//const std::lock_guard<std::mutex> lock(m); // see if this will work
 	Path& extractedPath = trajectory.getPath();
 	if (extractedPath.size() < 1) return;
-	Node test = extractedPath.front();
-	auto diff = extractedPath[0] - this->getPosition();
+	//Node test = extractedPath.front();
+	sf::Vector2f diff;
+	try {
+		//std::lock_guard<std::mutex> lock(m);
+		diff = extractedPath[0] - this->getPosition();
+	}
+	catch (...) {
+		diff = this->getPosition() - this->getPosition();
+	}
 	float ratio = dist * dist / (diff.x * diff.x + diff.y * diff.y);
 	if (ratio >= 1.0) {
 		this->setPosition(extractedPath[0]);
@@ -56,12 +87,14 @@ void Robot::followTrajectory(Trajectory& trajectory, float dist)
 
 void Robot::setTrajectory(Trajectory* traj)
 {
+	std::lock_guard<std::mutex> lock(m);
 	delete currTrajectory;
 	currTrajectory = traj;
 }
 
 void Robot::addToCurrTrajectory(Node node)
 {
+	std::lock_guard<std::mutex> lock(m);
 	currTrajectory->addToPath(node);
 }
 
@@ -73,4 +106,10 @@ float Robot::getRadius()
 void Robot::update(int elapsedTime)
 {
 	followTrajectory(elapsedTime);
+}
+
+const sf::Vector2f& Robot::getPosition() const {
+	//std::lock_guard<std::mutex> lock(m);
+	// TODO potentially need to lock individual calls to getPosition
+	return CenteredCircle::getPosition();
 }

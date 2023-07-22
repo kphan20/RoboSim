@@ -1,5 +1,4 @@
 #include "AStar.h"
-#include "CSpace.h"
 #include "VisualizerConstants.h"
 #include <iostream>
 #include <set>
@@ -156,21 +155,30 @@ Trajectory* AStar::constructPath(const AStarNode& begin, AStarNode& end) const
 	return trajectory;
 }
 
-Trajectory* AStar::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui, sf::Vector2u windowSize, bool visualize) const
+void AStar::setUp(float robotRad, sf::Vector2f robotPos, GuiManager& gui, sf::Vector2u windowSize)
+{
+	if (cSpace != nullptr) {
+		cSpace->cleanUp();
+		delete cSpace;
+	}
+	cSpace = new CSpace(robotRad, robotPos, gui, windowSize);
+}
+
+Trajectory* AStar::findPath(sf::Vector2f robotPos, int nodeSize, Node end, GuiManager& gui, sf::Vector2u windowSize, bool visualize) const
 {
 	using milli = std::chrono::milliseconds;
 	auto start = std::chrono::high_resolution_clock::now();
 	size_t nodesExpanded = 0;
 	Trajectory* result = new Trajectory();
-	CSpace cSpace(robotRad, robotPos, gui, windowSize);
-	bool xRemainder = windowSize.x % gui.nodeSize, yRemainder = windowSize.y % gui.nodeSize;
+	// CSpace cSpace(robotRad, robotPos, gui, windowSize);
+	bool xRemainder = windowSize.x % nodeSize, yRemainder = windowSize.y % nodeSize;
 	auto istart = sf::Vector2i(robotPos);
-	Node end = gui.getMousePos();
+	// Node end = gui.getMousePos();
 	auto iend = sf::Vector2i(end);
 	auto cmp = [](const AStarNode* a, const AStarNode* b) {
 		return *a < *b;
 	};
-	OpenList openNodes(gui.nodeSize, xRemainder, yRemainder, windowSize);
+	OpenList openNodes(nodeSize, xRemainder, yRemainder, windowSize);
 
 	AStarNode* startNode = new AStarNode(istart);
 	const AStarNode endNode(iend);
@@ -181,7 +189,7 @@ Trajectory* AStar::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& g
 	}
 
 	auto endCoords = endNode.coords();
-	if (cSpace.contains(endNode.coords()))
+	if (cSpace->contains(endNode.coords()))
 		openNodes.insert(startNode);
 	auto finish = std::chrono::high_resolution_clock::now();
 	std::cout << "Setup took " << std::chrono::duration_cast<milli>(finish - start).count() << " milliseconds\n";
@@ -195,7 +203,7 @@ Trajectory* AStar::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& g
 #if DEBUG
 		std::cout << curr->x << ", " << curr->y << '\n';
 #endif
-		if (cSpace.endReached(currCoords, endCoords))
+		if (cSpace->endReached(currCoords, endCoords))
 		{
 			delete result;
 			result = constructPath(*startNode, *curr);
@@ -213,9 +221,9 @@ Trajectory* AStar::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& g
 		for (int dx = -1; dx < 2; dx++) {
 			for (int dy = -1; dy < 2; dy++) {
 				if (dx == 0 && dy == 0) continue;
-				int newX = currCoords.first + dx * gui.nodeSize;
-				int newY = currCoords.second + dy * gui.nodeSize;
-				if (!cSpace.contains(newX, newY)) continue;
+				int newX = currCoords.first + dx * nodeSize;
+				int newY = currCoords.second + dy * nodeSize;
+				if (!cSpace->contains(newX, newY)) continue;
 				int gScore = curr->g + 1;
 
 				int diffX = endCoords.first - newX;
@@ -230,9 +238,9 @@ Trajectory* AStar::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& g
 	std::cout << "Search took " << std::chrono::duration_cast<milli>(finish - start).count() << " milliseconds\n";
 	start = std::chrono::high_resolution_clock::now();
 	// frees memory allocated by grid
-	cSpace.cleanUp();
+	// cSpace->cleanUp();
 	openNodes.cleanUp();
-	gui.freeNodes();
+	if (visualize) gui.freeNodes();
 
 	finish = std::chrono::high_resolution_clock::now();
 	std::cout << "Cleanup took " << std::chrono::duration_cast<milli>(finish - start).count() << " milliseconds\n";

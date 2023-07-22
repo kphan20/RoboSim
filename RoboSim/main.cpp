@@ -3,6 +3,7 @@
 #include "RRTStar.h"
 #include <iostream>
 #include <chrono>
+#include <future>
 
 #define DEBUG 0
 #define VISUALIZE false
@@ -79,13 +80,19 @@ int main()
 {
 	int windowWidth{ 500 }, windowLength{ 500 };
 	sf::RenderWindow window(sf::VideoMode(windowWidth, windowLength), "SFML works!", sf::Style::Fullscreen);
+	std::mutex m;
+	std::atomic_flag flag;
+	std::atomic_flag simEnded;
+	flag.test_and_set();
+	simEnded.clear();
 
 	AStar plan;
 	RRT plan1(50000, 30, 1);
 	RRTStar plan2(3, 10000, 30, 5);
-	Robot robot(plan, 75);
+	Robot robot(plan, m, 75);
+	GuiManager gui(window, m, 5);
 
-	GuiManager gui(window, 5);
+	auto f = std::async(std::launch::async, &Robot::schedulePlan, &robot, std::ref(gui), window.getSize(), std::ref(flag), std::ref(simEnded));
 
 	std::cout << window.getSize().x << ',' << window.getSize().y << '\n';
 
@@ -102,9 +109,18 @@ int main()
 
 	GameMode gameMode = placement;
 
+	int planTimer = 0;
+	int prevTime = clock.getElapsedTime().asMilliseconds();
 	while (window.isOpen())
 	{
 		int currTime = clock.getElapsedTime().asMilliseconds();
+
+		planTimer += currTime - prevTime;
+		prevTime = currTime;
+		if (planTimer > 100) {
+			flag.notify_all();
+			planTimer = 0;
+		}
 
 		if (nextUpdate < currTime) {
 			if (gameMode == placement)
@@ -127,6 +143,7 @@ int main()
 
 		window.display();
 	}
-
+	//f.get();
+	simEnded.test_and_set();
 	return 0;
 }

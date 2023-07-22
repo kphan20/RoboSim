@@ -9,9 +9,9 @@ const int TRIANGLE_SIZE = 20;
 const int RIGHT_OFFSET = 100;
 const float TOP_OFFSET = 50.0f;
 
-GuiManager::GuiManager(sf::RenderWindow& win, int sizePerNode) :
+GuiManager::GuiManager(sf::RenderWindow& win, std::mutex& lock, int sizePerNode) :
 	window(win), nodeSize(sizePerNode), dropDownToggle(win, TOGGLE_BUTTON_SIZE),
-	dropDownTri(TRIANGLE_SIZE, 3)
+	dropDownTri(TRIANGLE_SIZE, 3), m(lock)
 {
 	currShapeIdx = 0;
 	currShapeIdxPtr = &currShapeIdx;
@@ -32,6 +32,7 @@ void GuiManager::addCircle()
 	auto ptr1 = std::make_unique<CenteredCircle>(75.0f);
 	ptr1->setFillColor(sf::Color::Yellow);
 	ptr1->shape.setOutlineColor(sf::Color::White);
+	std::lock_guard<std::mutex> lock(m);
 	if (moveableShapes.size() == 0) ptr1->setOutlineThickness(SELECT_OUTLINE_THICKNESS);
 	moveableShapes.emplace_back(std::move(ptr1));
 }
@@ -45,7 +46,8 @@ void GuiManager::addButton()
 	if (++numButtons >= guiObjects.size()) {
 		size_t numButtonsCopy = numButtons - 1;
 		auto newAction = std::make_shared<ClickAction>([this, numButtonsCopy](size_t val) -> void {
-			moveableShapes[currShapeIdx]->setOutlineThickness(0.0);
+			std::lock_guard<std::mutex> lock(m);
+		moveableShapes[currShapeIdx]->setOutlineThickness(0.0);
 		currShapeIdx = numButtonsCopy;
 		moveableShapes[currShapeIdx]->setOutlineThickness(SELECT_OUTLINE_THICKNESS);
 		return;
@@ -63,11 +65,12 @@ void GuiManager::toggleButtons() {
 	float thickness = 0.0;
 	buttonsVisible = !buttonsVisible;
 	if (buttonsVisible) thickness = SELECT_OUTLINE_THICKNESS;
-	if (moveableShapes.size() > 0)
-		moveableShapes[currShapeIdx]->setOutlineThickness(thickness);
 	for (const std::unique_ptr<Button>& guiObject : guiObjects)
 		guiObject->isVisible = buttonsVisible;
 	dropDownTri.rotate(180);
+	std::lock_guard<std::mutex> lock(m);
+	if (moveableShapes.size() > 0)
+		moveableShapes[currShapeIdx]->setOutlineThickness(thickness);
 }
 
 void GuiManager::handleInput()
@@ -86,9 +89,11 @@ void GuiManager::scroll()
 
 void GuiManager::draw()
 {
-	for (const std::unique_ptr<CustomShape>& moveableShape : moveableShapes)
-		window.draw(moveableShape->getDrawable());
-
+	{
+		std::lock_guard<std::mutex> lock(m);
+		for (const std::unique_ptr<CustomShape>& moveableShape : moveableShapes)
+			window.draw(moveableShape->getDrawable());
+	}
 	window.draw(dropDownToggle.getDrawable());
 	window.draw(dropDownTri.getDrawable());
 	if (buttonsVisible) {
@@ -105,6 +110,7 @@ void GuiManager::moveSelected()
 			for (const std::unique_ptr<Button>& guiObject : guiObjects)
 				if (guiObject->contains(mousePos)) return;
 		if (dropDownToggle.contains(mousePos)) return;
+		std::lock_guard<std::mutex> lock(m);
 		moveableShapes[currShapeIdx]->setPosition(getMousePos());
 	}
 }

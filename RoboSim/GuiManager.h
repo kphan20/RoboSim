@@ -3,6 +3,7 @@
 #include "Trajectory.h"
 #include <vector>
 #include <memory>
+#include <mutex>
 #include <SFML/Graphics.hpp>
 
 typedef std::vector<std::unique_ptr<CustomShape>> ShapeList;
@@ -14,7 +15,7 @@ typedef std::vector<CenteredCircle*> VisualizerList;
 class GuiManager
 {
 public:
-	GuiManager(sf::RenderWindow&, int sizePerNode = 1);
+	GuiManager(sf::RenderWindow&, std::mutex&, int sizePerNode = 1);
 	GuiManager(const GuiManager&) = delete;
 	const int nodeSize;
 	void addCircle();
@@ -46,4 +47,5 @@ private:
 	bool buttonsVisible;
 	Button dropDownToggle;
 	CenteredCircle dropDownTri;
+	std::mutex& m;
 };
