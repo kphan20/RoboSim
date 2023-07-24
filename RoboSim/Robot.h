@@ -7,7 +7,7 @@ class Robot : public CenteredCircle
 {
 public:
 	Robot(Planner&, std::mutex&);
-	Robot(Planner&, std::mutex&, float radius, size_t pointCount = 30);
+	Robot(Planner&, std::mutex&, float radius, size_t nodeSize, size_t pointCount = 30);
 	void plan(GuiManager& gui, sf::Vector2u windowSize, bool visualize = false);
 	void schedulePlan(GuiManager&, sf::Vector2u, std::atomic_flag&, std::atomic_flag&);
 	void followTrajectory();
@@ -23,4 +23,5 @@ private:
 	Trajectory* currTrajectory;
 	Planner& planner;
 	std::mutex& m;
+	size_t nodeSize;
 };

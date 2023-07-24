@@ -7,7 +7,8 @@ Robot::Robot(Planner& plan, std::mutex& lock) : CenteredCircle(), planner(plan),
 	currTrajectory = new (std::nothrow) Trajectory;
 }
 
-Robot::Robot(Planner& plan, std::mutex& lock, float radius, size_t pointCount) : CenteredCircle(radius, pointCount), planner(plan), m(lock)
+Robot::Robot(Planner& plan, std::mutex& lock, float radius, size_t nodeSize, size_t pointCount) :
+	CenteredCircle(radius, pointCount), planner(plan), m(lock), nodeSize(nodeSize)
 {
 	this->setFillColor(sf::Color::Red);
 	currTrajectory = new (std::nothrow) Trajectory;
@@ -24,10 +25,10 @@ void Robot::schedulePlan(GuiManager& gui, sf::Vector2u windowSize, std::atomic_f
 	while (!ended.test())
 	{
 		pause.wait(false);
+		if (ended.test()) return;
 		sf::Vector2f pos;
 		int nodeSize;
 		Node end;
-		// flag.wait(lock);//, [pause] {return !*pause; });
 		{
 			std::lock_guard<std::mutex> lock(m);
 			pos = getPosition();
@@ -63,18 +64,20 @@ void Robot::followTrajectory(Trajectory& trajectory)
 
 void Robot::followTrajectory(Trajectory& trajectory, float dist)
 {
-	//const std::lock_guard<std::mutex> lock(m); // see if this will work
 	Path& extractedPath = trajectory.getPath();
-	if (extractedPath.size() < 1) return;
-	//Node test = extractedPath.front();
 	sf::Vector2f diff;
-	try {
-		//std::lock_guard<std::mutex> lock(m);
-		diff = extractedPath[0] - this->getPosition();
+	// attempt to reduce jittering
+	while (extractedPath.size() > 0) {
+		diff = extractedPath.front() - this->getPosition();
+		if (diff.x * diff.x + diff.y * diff.y > 2 * nodeSize * nodeSize) {
+			trajectory.removeFront();
+		}
+		else {
+			break;
+		}
 	}
-	catch (...) {
-		diff = this->getPosition() - this->getPosition();
-	}
+	if (extractedPath.size() < 1) return;
+
 	float ratio = dist * dist / (diff.x * diff.x + diff.y * diff.y);
 	if (ratio >= 1.0) {
 		this->setPosition(extractedPath[0]);

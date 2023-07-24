@@ -89,7 +89,7 @@ int main()
 	AStar plan;
 	RRT plan1(50000, 30, 1);
 	RRTStar plan2(3, 10000, 30, 5);
-	Robot robot(plan, m, 75);
+	Robot robot(plan, m, 75, 5);
 	GuiManager gui(window, m, 5);
 
 	auto f = std::async(std::launch::async, &Robot::schedulePlan, &robot, std::ref(gui), window.getSize(), std::ref(flag), std::ref(simEnded));
@@ -118,7 +118,7 @@ int main()
 		planTimer += currTime - prevTime;
 		prevTime = currTime;
 		if (planTimer > 100) {
-			flag.notify_all();
+			//flag.notify_all();
 			planTimer = 0;
 		}
 
@@ -145,5 +145,7 @@ int main()
 	}
 	//f.get();
 	simEnded.test_and_set();
+	flag.test_and_set();
+	flag.notify_all();
 	return 0;
 }
