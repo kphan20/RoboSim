@@ -170,10 +170,8 @@ Trajectory* AStar::findPath(sf::Vector2f robotPos, int nodeSize, Node end, GuiMa
 	auto start = std::chrono::high_resolution_clock::now();
 	size_t nodesExpanded = 0;
 	Trajectory* result = new Trajectory();
-	// CSpace cSpace(robotRad, robotPos, gui, windowSize);
 	bool xRemainder = windowSize.x % nodeSize, yRemainder = windowSize.y % nodeSize;
 	auto istart = sf::Vector2i(robotPos);
-	// Node end = gui.getMousePos();
 	auto iend = sf::Vector2i(end);
 	auto cmp = [](const AStarNode* a, const AStarNode* b) {
 		return *a < *b;
@@ -237,8 +235,7 @@ Trajectory* AStar::findPath(sf::Vector2f robotPos, int nodeSize, Node end, GuiMa
 	finish = std::chrono::high_resolution_clock::now();
 	std::cout << "Search took " << std::chrono::duration_cast<milli>(finish - start).count() << " milliseconds\n";
 	start = std::chrono::high_resolution_clock::now();
-	// frees memory allocated by grid
-	// cSpace->cleanUp();
+	
 	openNodes.cleanUp();
 	if (visualize) gui.freeNodes();
 
