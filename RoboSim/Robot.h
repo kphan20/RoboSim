@@ -17,11 +17,16 @@ public:
 	void setTrajectory(Trajectory*);
 	void addToCurrTrajectory(Node);
 	float getRadius();
+	bool trajectoryDone();
+	bool destinationChanged();
+	void setDestination(Node dest);
 	void update(int);
 	const sf::Vector2f& getPosition() const override;
 private:
-	Trajectory* currTrajectory;
+	Trajectory* currTrajectory = nullptr;
 	Planner& planner;
 	std::mutex& m;
 	size_t nodeSize;
+	Node currDest;
+	bool destChanged;
 };

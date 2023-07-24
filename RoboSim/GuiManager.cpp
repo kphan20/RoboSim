@@ -35,6 +35,7 @@ void GuiManager::addCircle()
 	std::lock_guard<std::mutex> lock(m);
 	if (moveableShapes.size() == 0) ptr1->setOutlineThickness(SELECT_OUTLINE_THICKNESS);
 	moveableShapes.emplace_back(std::move(ptr1));
+	recentlyChanged = true;
 }
 
 void GuiManager::addButton()
@@ -112,6 +113,7 @@ void GuiManager::moveSelected()
 		if (dropDownToggle.contains(mousePos)) return;
 		std::lock_guard<std::mutex> lock(m);
 		moveableShapes[currShapeIdx]->setPosition(getMousePos());
+		recentlyChanged = true;
 	}
 }
 
@@ -123,6 +125,14 @@ Node GuiManager::getMousePos()
 const ShapeList* GuiManager::getShapes()
 {
 	return &moveableShapes;
+}
+
+bool GuiManager::shapesChanged() {
+	if (recentlyChanged) {
+		recentlyChanged = false;
+		return true;
+	}
+	return false;
 }
 
 void GuiManager::addNode(std::pair<int, int> coords, sf::Color color)

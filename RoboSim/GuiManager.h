@@ -27,6 +27,7 @@ public:
 	Node getMousePos();
 	const ShapeList* getShapes();
 	void toggleButtons();
+	bool shapesChanged();
 
 	// pathfinding api
 	void addNode(std::pair<int, int> coords, sf::Color);
@@ -48,4 +49,5 @@ private:
 	Button dropDownToggle;
 	CenteredCircle dropDownTri;
 	std::mutex& m;
+	bool recentlyChanged = true;
 };

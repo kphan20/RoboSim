@@ -14,6 +14,11 @@ Robot::Robot(Planner& plan, std::mutex& lock, float radius, size_t nodeSize, siz
 	currTrajectory = new (std::nothrow) Trajectory;
 }
 
+bool Robot::trajectoryDone()
+{
+	return currTrajectory->getPath().empty();
+}
+
 void Robot::plan(GuiManager& gui, sf::Vector2u windowSize, bool visualize)
 {
 	planner.setUp(getRadius(), getPosition(), gui, windowSize);
@@ -29,14 +34,20 @@ void Robot::schedulePlan(GuiManager& gui, sf::Vector2u windowSize, std::atomic_f
 		sf::Vector2f pos;
 		int nodeSize;
 		Node end;
+		bool isNewDest = false, isNewSpace = false;
 		{
 			std::lock_guard<std::mutex> lock(m);
-			pos = getPosition();
-			nodeSize = gui.nodeSize;
-			end = gui.getMousePos();
-			planner.setUp(getRadius(), pos, gui, windowSize);
+			isNewDest = destinationChanged();
+			isNewSpace = gui.shapesChanged();
+			if (isNewDest || isNewSpace) {
+				pos = getPosition();
+				nodeSize = gui.nodeSize;
+				end = Node(currDest.x, currDest.y); //gui.getMousePos();
+				planner.setUp(getRadius(), pos, gui, windowSize);
+			}
 		}
-		setTrajectory(planner.findPath(pos, nodeSize, end, gui, windowSize, false));
+		if (isNewDest || isNewSpace)
+			setTrajectory(planner.findPath(pos, nodeSize, end, gui, windowSize, false));
 		//sf::sleep(sf::milliseconds(100));
 	}
 }
@@ -52,7 +63,7 @@ void Robot::followTrajectory(float dist)
 {
 	const std::lock_guard<std::mutex> lock(m);
 	if (currTrajectory)
-		followTrajectory(*currTrajectory, dist);
+		followTrajectory(*currTrajectory, dist / 2);
 }
 
 void Robot::followTrajectory(Trajectory& trajectory)
@@ -65,19 +76,9 @@ void Robot::followTrajectory(Trajectory& trajectory)
 void Robot::followTrajectory(Trajectory& trajectory, float dist)
 {
 	Path& extractedPath = trajectory.getPath();
-	sf::Vector2f diff;
-	// attempt to reduce jittering
-	while (extractedPath.size() > 0) {
-		diff = extractedPath.front() - this->getPosition();
-		if (diff.x * diff.x + diff.y * diff.y > 2 * nodeSize * nodeSize) {
-			trajectory.removeFront();
-		}
-		else {
-			break;
-		}
-	}
 	if (extractedPath.size() < 1) return;
 
+	sf::Vector2f diff = extractedPath.front() - this->getPosition();
 	float ratio = dist * dist / (diff.x * diff.x + diff.y * diff.y);
 	if (ratio >= 1.0) {
 		this->setPosition(extractedPath[0]);
@@ -91,7 +92,7 @@ void Robot::followTrajectory(Trajectory& trajectory, float dist)
 void Robot::setTrajectory(Trajectory* traj)
 {
 	std::lock_guard<std::mutex> lock(m);
-	delete currTrajectory;
+	if (currTrajectory != nullptr) delete currTrajectory;
 	currTrajectory = traj;
 }
 
@@ -104,6 +105,22 @@ void Robot::addToCurrTrajectory(Node node)
 float Robot::getRadius()
 {
 	return this->shape.getRadius();
+}
+
+void Robot::setDestination(Node dest)
+{
+	std::lock_guard<std::mutex> lock(m);
+	currDest = Node(dest.x, dest.y);
+	destChanged = true;
+}
+
+bool Robot::destinationChanged()
+{
+	if (destChanged) {
+		destChanged = false;
+		return true;
+	}
+	return false;
 }
 
 void Robot::update(int elapsedTime)
