@@ -1,5 +1,6 @@
 #pragma once
 #include "Planning.h"
+#include "CSpace.h"
 #include <SFML/Graphics.hpp>
 #include <tuple>
 #include <unordered_map>
@@ -70,7 +71,9 @@ private:
 class AStar : public Planner
 {
 public:
-	Trajectory* findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui, sf::Vector2u windowSize, bool visualize = false) const;
+	Trajectory* findPath(sf::Vector2f robotPos, int nodeSize, Node end, GuiManager& gui, sf::Vector2u windowSize, bool visualize = false) const;
+	void setUp(float, sf::Vector2f, GuiManager&, sf::Vector2u);
 private:
+	CSpace* cSpace = nullptr;
 	Trajectory* constructPath(const AStarNode&, AStarNode&) const;
 };

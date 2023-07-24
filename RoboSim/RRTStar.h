@@ -147,8 +147,10 @@ class RRTStar : public RRT
 {
 public:
 	RRTStar(int queryRad, int k, int goalBias, int steerRes = 1);
-	Trajectory* findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui, sf::Vector2u windowSize, bool visualize = false) const;
+	Trajectory* findPath(sf::Vector2f robotPos, int nodeSize, Node end, GuiManager& gui, sf::Vector2u windowSize, bool visualize = false) const;
+	void setUp(float, sf::Vector2f, GuiManager&, sf::Vector2u);
 private:
+	RRTStarCSpace* cSpace = nullptr;
 	int queryRad;
 	std::pair<float, float> incrementCoord(std::pair<float, float> coord, float stepSize, float sin, float cos) const
 	{

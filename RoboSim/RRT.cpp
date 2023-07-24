@@ -9,22 +9,32 @@ RRT::RRT(int k, int goalBias, int steerRes)
 	this->steerRes = steerRes;
 }
 
-Trajectory* RRT::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui, sf::Vector2u windowSize, bool visualize) const
+void RRT::setUp(float robotRad, sf::Vector2f robotPos, GuiManager& gui, sf::Vector2u windowSize)
+{
+	if (cSpace != nullptr)
+	{
+		cSpace->cleanUp();
+		delete cSpace;
+	}
+	cSpace = new RRTCSpace(robotRad, robotPos, gui, windowSize);
+}
+
+Trajectory* RRT::findPath(sf::Vector2f robotPos, int nodeSize, Node end, GuiManager& gui, sf::Vector2u windowSize, bool visualize) const
 {
 	Trajectory* result = new Trajectory();
-	RRTCSpace cSpace(robotRad, robotPos, gui, windowSize);
+	// RRTCSpace cSpace(robotRad, robotPos, gui, windowSize);
 	const std::pair<int, int> start(robotPos.x, robotPos.y);
-	auto end = gui.getMousePos();
+	// auto end = gui.getMousePos();
 	auto endCoords = std::pair<int, int>(end.x, end.y);
-	if (!cSpace.contains(endCoords)) {
-		cSpace.cleanUp();
+	if (!cSpace->contains(endCoords)) {
+		// cSpace.cleanUp();
 		return result;
 	}
 	if (visualize) {
 		gui.addNode(endCoords, sf::Color::Green);
 		gui.drawNodes();
 	}
-	KDTree<KDTreeNode> tree(start, cSpace.maxDims());
+	KDTree<KDTreeNode> tree(start, cSpace->maxDims());
 
 	std::array<std::pair<int, int>, 8> directions
 	{ {std::pair<int, int>(1, 1),std::pair<int, int>(0, 1),
@@ -45,7 +55,7 @@ Trajectory* RRT::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui
 			randPoint = endCoords;
 		}
 		else {
-			randPoint = cSpace.sample();
+			randPoint = cSpace->sample();
 		}
 		KDTreeNode* nearestNode = tree.nearest(randPoint);
 		std::pair<int, int> nearestPoint = nearestNode->c;
@@ -82,7 +92,7 @@ Trajectory* RRT::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui
 		}
 
 		auto newDirection = directions[directionInd];
-		auto newCoords = incrementCoord(nearestPoint, gui.nodeSize, newDirection);
+		auto newCoords = incrementCoord(nearestPoint, nodeSize, newDirection);
 		/*std::pair<int, int>(nearestPoint.first + newDirection.first * gui.nodeSize,
 			nearestPoint.second + newDirection.second * gui.nodeSize);*/
 
@@ -93,17 +103,17 @@ Trajectory* RRT::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui
 		size_t p2 = (directionInd + 1) % len;
 		bool useP1 = true;
 		for (int j = 0; j < len; j++) {
-			if (cSpace.contains(newCoords) && tree.put(newCoords, nearestNode)) {
+			if (cSpace->contains(newCoords) && tree.put(newCoords, nearestNode)) {
 				valid = true;
 				auto steerTest = std::pair<int, int>(newCoords);
 				for (int step = 1; step < steerRes; step++) {
-					steerTest = incrementCoord(steerTest, gui.nodeSize, newDirection);
-					if (!cSpace.contains(steerTest) || !tree.put(steerTest, nearestNode)) break;
+					steerTest = incrementCoord(steerTest, nodeSize, newDirection);
+					if (!cSpace->contains(steerTest) || !tree.put(steerTest, nearestNode)) break;
 					if (visualize) {
 						gui.addNode(newCoords, sf::Color::Blue);
 					}
 					newCoords = steerTest;
-					if (cSpace.endReached(steerTest, newCoords)) break;
+					if (cSpace->endReached(steerTest, newCoords)) break;
 				}
 				break;
 			}
@@ -115,14 +125,14 @@ Trajectory* RRT::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui
 				newDirection = directions[p2];
 				p2 = (p2 + 1) % len;
 			}
-			newCoords = incrementCoord(nearestPoint, gui.nodeSize, newDirection);//std::pair<int, int>(nearestPoint.first + newDirection.first * gui.nodeSize,
+			newCoords = incrementCoord(nearestPoint, nodeSize, newDirection);//std::pair<int, int>(nearestPoint.first + newDirection.first * gui.nodeSize,
 			//nearestPoint.second + newDirection.second * gui.nodeSize);
 
 			useP1 = !useP1;
 		}
 
 		if (valid) {
-			if (cSpace.endReached(newCoords, endCoords)) {
+			if (cSpace->endReached(newCoords, endCoords)) {
 				break;
 			}
 			if (visualize) {
@@ -141,8 +151,8 @@ Trajectory* RRT::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui
 		curr = curr->parent;
 	}
 	result->removeFront();
-	cSpace.cleanUp();
+	// cSpace.cleanUp();
 	tree.cleanUp();
-	gui.freeNodes();
+	if (visualize) gui.freeNodes();
 	return result;
 }

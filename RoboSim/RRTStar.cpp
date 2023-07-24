@@ -6,18 +6,28 @@ RRTStar::RRTStar(int queryRad, int k, int goalBias, int steerRes) : RRT(k, goalB
 	this->queryRad = queryRad;
 }
 
-Trajectory* RRTStar::findPath(float robotRad, sf::Vector2f robotPos, GuiManager& gui, sf::Vector2u windowSize, bool visualize) const
+void RRTStar::setUp(float robotRad, sf::Vector2f robotPos, GuiManager& gui, sf::Vector2u windowSize)
+{
+	if (cSpace != nullptr)
+	{
+		cSpace->cleanUp();
+		delete cSpace;
+	}
+	cSpace = new RRTStarCSpace(robotRad, robotPos, gui, windowSize);
+}
+
+Trajectory* RRTStar::findPath(sf::Vector2f robotPos, int nodeSize, Node end, GuiManager& gui, sf::Vector2u windowSize, bool visualize) const
 {
 	Trajectory* result = new Trajectory();
-	RRTStarCSpace cSpace(robotRad, robotPos, gui, windowSize);
+	//RRTStarCSpace cSpace(robotRad, robotPos, gui, windowSize);
 	const std::pair<int, int> start(robotPos.x, robotPos.y);
-	auto end = gui.getMousePos();
+	// auto end = gui.getMousePos();
 	auto endCoords = std::pair<int, int>(end.x, end.y);
 	if (visualize) {
 		gui.addNode(endCoords, sf::Color::Green);
 		gui.drawNodes();
 	}
-	RRTStarTree tree(cSpace.quantizeCoords(start), cSpace.maxDims());
+	RRTStarTree tree(cSpace->quantizeCoords(start), cSpace->maxDims());
 
 	for (int i = 0; i < k; i++)
 	{
@@ -28,22 +38,22 @@ Trajectory* RRTStar::findPath(float robotRad, sf::Vector2f robotPos, GuiManager&
 			randPoint = endCoords;
 		}
 		else {
-			randPoint = cSpace.sample();
+			randPoint = cSpace->sample();
 		}
 		RRTStarNode* nearestNode = tree.nearest(randPoint);
 		std::pair<int, int> nearestPoint = nearestNode->c;
 		if (nearestPoint == randPoint) continue; // want to avoid sampling repeat coords
 
-		auto steerPath = steer(nearestNode, randPoint, endCoords, gui.nodeSize, cSpace);
-		std::pair<int, int> newCoords = cSpace.quantizeCoords(steerPath.back());
-		if (newCoords != nearestPoint && obstacleFree(steerPath, cSpace)) {
+		auto steerPath = steer(nearestNode, randPoint, endCoords, nodeSize, *cSpace);
+		std::pair<int, int> newCoords = cSpace->quantizeCoords(steerPath.back());
+		if (newCoords != nearestPoint && obstacleFree(steerPath, *cSpace)) {
 			bool isValid = tree.put(newCoords, nearestNode);
-			if (cSpace.endReached(newCoords, endCoords)) {
+			if (cSpace->endReached(newCoords, endCoords)) {
 				break;
 			}
 			if (isValid) {
 				std::vector<RRTStarNode*> nearbyNodes =
-					tree.near(newCoords, queryRad * gui.nodeSize);
+					tree.near(newCoords, queryRad * nodeSize);
 				RRTStarNode* champ = nearestNode;
 				int champCost = champ->cost + champ->distSquaredTo(newCoords);
 				int nodeInd = 0;
@@ -51,8 +61,8 @@ Trajectory* RRTStar::findPath(float robotRad, sf::Vector2f robotPos, GuiManager&
 				for (auto node : nearbyNodes) {
 					nodeObsFree[nodeInd] = false;
 					if (newCoords == node->c) continue;
-					auto path = steer(node, newCoords, endCoords, gui.nodeSize, cSpace, true);
-					if (obstacleFree(path, cSpace)) {
+					auto path = steer(node, newCoords, endCoords, nodeSize, *cSpace, true);
+					if (obstacleFree(path, *cSpace)) {
 						nodeObsFree[nodeInd] = true;
 						int newCost = node->cost + node->distSquaredTo(newCoords);
 						if (newCost < champCost) {
@@ -92,8 +102,8 @@ Trajectory* RRTStar::findPath(float robotRad, sf::Vector2f robotPos, GuiManager&
 		curr = curr->parent;
 	}
 
-	cSpace.cleanUp();
+	// cSpace.cleanUp();
 	tree.cleanUp();
-	gui.freeNodes();
+	if (visualize) gui.freeNodes();
 	return result;
 }
